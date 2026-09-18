@@ -21,17 +21,24 @@ export function isAllowedFile(file: File) {
   return ALLOWED_MIME.includes(file.type) || file.name.match(/\.(pdf|doc|docx|ppt|pptx|xls|xlsx|png|jpe?g|gif|webp|txt)$/i);
 }
 
-export function buildMaterialPath(schoolId: string, subjectId: string, fileName: string) {
+export function buildMaterialPath(
+  schoolId: string,
+  subjectId: string,
+  fileName: string,
+  folderId?: string | null
+) {
   const safe = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
   const stamp = Date.now();
-  return `${schoolId}/${subjectId}/${stamp}-${safe}`;
+  const folderPart = folderId ? `${folderId}/` : "";
+  return `${schoolId}/${subjectId}/${folderPart}${stamp}-${safe}`;
 }
 
 /** Upload from the browser using the anon client (requires Storage policies). */
 export async function uploadMaterial(
   file: File,
   schoolId: string,
-  subjectId: string
+  subjectId: string,
+  folderId?: string | null
 ): Promise<{ path: string; publicUrl: string }> {
   if (!isAllowedFile(file)) {
     throw new Error("Tipo de archivo no permitido. Use PDF, imágenes o documentos Office.");
@@ -41,7 +48,7 @@ export async function uploadMaterial(
   }
 
   const supabase = createBrowserClient();
-  const path = buildMaterialPath(schoolId, subjectId, file.name);
+  const path = buildMaterialPath(schoolId, subjectId, file.name, folderId);
 
   const { error } = await supabase.storage.from(MATERIALS_BUCKET).upload(path, file, {
     cacheControl: "3600",

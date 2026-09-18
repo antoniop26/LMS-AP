@@ -25,6 +25,11 @@ enum AttemptStatus {
   GRADED
 }
 
+enum MaterialFolderKind {
+  TEACHER_RESOURCES
+  STUDENT_SUBMISSIONS
+}
+
 model School {
   id        String   @id @default(cuid())
   name      String
@@ -49,6 +54,7 @@ model User {
   teacherSubjects TeacherSubject[]
   studentGroups   StudentGroup[]
   materials       Material[]
+  materialFolders MaterialFolder[]
   testsCreated    Test[]           @relation("TestCreator")
   attempts        TestAttempt[]
   gradesGiven     AnswerGrade[]    @relation("Grader")
@@ -83,6 +89,7 @@ model Group {
   students        StudentGroup[]
   teacherSubjects TeacherSubject[]
   materials       Material[]
+  materialFolders MaterialFolder[]
   tests           Test[]
 
   @@unique([gradeId, name])
@@ -102,6 +109,7 @@ model Subject {
 
   teacherSubjects TeacherSubject[]
   materials       Material[]
+  materialFolders MaterialFolder[]
   tests           Test[]
 
   @@unique([schoolId, name])
@@ -136,8 +144,31 @@ model StudentGroup {
   @@index([groupId])
 }
 
+model MaterialFolder {
+  id          String             @id @default(cuid())
+  name        String
+  description String?
+  kind        MaterialFolderKind
+  subjectId   String
+  subject     Subject            @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  groupId     String
+  group       Group              @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User               @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  opensAt     DateTime?
+  closesAt    DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+  materials   Material[]
+
+  @@index([subjectId])
+  @@index([groupId])
+  @@index([createdById])
+  @@index([kind])
+}
+
 model Material {
-  id           String   @id @default(cuid())
+  id           String          @id @default(cuid())
   title        String
   description  String?
   fileName     String
@@ -146,16 +177,19 @@ model Material {
   mimeType     String
   fileSize     Int?
   subjectId    String
-  subject      Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  subject      Subject         @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   groupId      String?
-  group        Group?   @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  group        Group?          @relation(fields: [groupId], references: [id], onDelete: SetNull)
+  folderId     String?
+  folder       MaterialFolder? @relation(fields: [folderId], references: [id], onDelete: Cascade)
   uploadedById String
-  uploadedBy   User     @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  uploadedBy   User            @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
 
   @@index([subjectId])
   @@index([groupId])
+  @@index([folderId])
   @@index([uploadedById])
 }
 

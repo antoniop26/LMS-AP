@@ -1,4 +1,4 @@
-import { PrismaClient, Role, QuestionType } from "@prisma/client";
+import { PrismaClient, Role, QuestionType, MaterialFolderKind } from "@prisma/client";
 import { createClient } from "@supabase/supabase-js";
 import ws from "ws";
 import "dotenv/config";
@@ -67,6 +67,7 @@ async function main() {
   await prisma.question.deleteMany();
   await prisma.test.deleteMany();
   await prisma.material.deleteMany();
+  await prisma.materialFolder.deleteMany();
   await prisma.teacherSubject.deleteMany();
   await prisma.studentGroup.deleteMany();
   await prisma.subject.deleteMany();
@@ -143,6 +144,34 @@ async function main() {
 
   await prisma.studentGroup.create({
     data: { studentId: createdUsers.ALUMNO, groupId: groupA.id },
+  });
+
+  // Sample material folders (Matemáticas + grupo A)
+  await prisma.materialFolder.create({
+    data: {
+      name: "Recursos — Fracciones",
+      description: "Guías y ejemplos para la unidad de fracciones",
+      kind: MaterialFolderKind.TEACHER_RESOURCES,
+      subjectId: mat.id,
+      groupId: groupA.id,
+      createdById: createdUsers.PROFESOR,
+    },
+  });
+
+  const closeDate = new Date();
+  closeDate.setDate(closeDate.getDate() + 14);
+
+  await prisma.materialFolder.create({
+    data: {
+      name: "Entrega — Tarea de fracciones",
+      description: "Suba su tarea resuelta en PDF o imagen",
+      kind: MaterialFolderKind.STUDENT_SUBMISSIONS,
+      subjectId: mat.id,
+      groupId: groupA.id,
+      createdById: createdUsers.PROFESOR,
+      opensAt: new Date(),
+      closesAt: closeDate,
+    },
   });
 
   // Sample published test
