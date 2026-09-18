@@ -1,5 +1,6 @@
 import { PrismaClient, Role, QuestionType } from "@prisma/client";
 import { createClient } from "@supabase/supabase-js";
+import ws from "ws";
 import "dotenv/config";
 
 const prisma = new PrismaClient();
@@ -50,8 +51,11 @@ async function main() {
 
   let adminAuth: ReturnType<typeof createClient> | null = null;
   if (url && serviceKey && !url.includes("placeholder")) {
+    // Node 20: polyfill WebSocket for supabase-js realtime init
+    (globalThis as unknown as { WebSocket: typeof ws }).WebSocket = ws as unknown as typeof ws;
     adminAuth = createClient(url, serviceKey, {
       auth: { autoRefreshToken: false, persistSession: false },
+      realtime: { transport: ws as unknown as typeof WebSocket },
     });
   }
 
