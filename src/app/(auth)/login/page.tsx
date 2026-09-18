@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { School } from "lucide-react";
+import Image from "next/image";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -45,11 +45,18 @@ export default function LoginPage() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-white to-gray-100 p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 text-white">
-            <School className="h-6 w-6" />
+          <div className="mx-auto mb-3 flex items-center justify-center">
+            <Image
+              src="/logo-tigers-icon.png"
+              alt="Tigers LMS"
+              width={88}
+              height={75}
+              className="h-20 w-auto object-contain"
+              priority
+            />
           </div>
-          <CardTitle>Colegio San Marcos</CardTitle>
-          <CardDescription>Inicie sesión en el LMS escolar</CardDescription>
+          <CardTitle>Smart Academy Panama</CardTitle>
+          <CardDescription>Inicie sesión en Tigers LMS</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={onSubmit} className="space-y-4">

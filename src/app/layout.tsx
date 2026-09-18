@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "LMS — Colegio San Marcos",
+  title: "Tigers LMS — Smart Academy Panama",
   description: "Sistema de gestión de aprendizaje escolar",
 };
 

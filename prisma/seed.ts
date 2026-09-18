@@ -76,7 +76,7 @@ async function main() {
   await prisma.school.deleteMany();
 
   const school = await prisma.school.create({
-    data: { name: "Colegio San Marcos" },
+    data: { name: "Smart Academy Panama" },
   });
 
   const usersDef: { email: string; fullName: string; role: Role }[] = [
@@ -189,7 +189,7 @@ async function main() {
     },
   });
 
-  console.log("\n✅ Seed completado — Colegio San Marcos");
+  console.log("\n✅ Seed completado — Smart Academy Panama");
   console.log("   admin@colegio.demo / demo1234");
   console.log("   profesor@colegio.demo / demo1234");
   console.log("   alumno@colegio.demo / demo1234");

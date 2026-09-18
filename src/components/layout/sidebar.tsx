@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BookOpen,
@@ -11,7 +12,6 @@ import {
   ClipboardList,
   Award,
   LogOut,
-  School,
   UserPlus,
 } from "lucide-react";
 import { cn, ROLE_LABELS } from "@/lib/utils";
@@ -65,12 +65,16 @@ export function Sidebar({
   return (
     <aside className="flex h-full w-64 flex-col border-r border-gray-200 bg-white">
       <div className="flex items-center gap-2 border-b border-gray-200 px-5 py-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600 text-white">
-          <School className="h-5 w-5" />
-        </div>
+        <Image
+          src="/logo-tigers-icon.png"
+          alt="Tigers LMS"
+          width={40}
+          height={34}
+          className="h-10 w-auto object-contain shrink-0"
+        />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-gray-900">{schoolName}</p>
-          <p className="text-xs text-gray-500">LMS Escolar</p>
+          <p className="text-xs text-gray-500">Tigers LMS</p>
         </div>
       </div>
 
