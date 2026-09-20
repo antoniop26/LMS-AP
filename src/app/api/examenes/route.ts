@@ -3,9 +3,11 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { QuestionType } from "@prisma/client";
 
-export async function GET(_req: NextRequest) {
+export async function GET(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
+
+  const subjectId = req.nextUrl.searchParams.get("subjectId");
 
   if (user.role === "ALUMNO") {
     const memberships = await prisma.studentGroup.findMany({
@@ -18,6 +20,7 @@ export async function GET(_req: NextRequest) {
         published: true,
         subject: { schoolId: user.schoolId },
         OR: [{ groupId: null }, { groupId: { in: groupIds } }],
+        ...(subjectId ? { subjectId } : {}),
       },
       include: {
         subject: true,
@@ -31,10 +34,12 @@ export async function GET(_req: NextRequest) {
   }
 
   const tests = await prisma.test.findMany({
-    where:
-      user.role === "PROFESOR"
+    where: {
+      ...(user.role === "PROFESOR"
         ? { creatorId: user.id }
-        : { subject: { schoolId: user.schoolId } },
+        : { subject: { schoolId: user.schoolId } }),
+      ...(subjectId ? { subjectId } : {}),
+    },
     include: {
       subject: true,
       group: true,
