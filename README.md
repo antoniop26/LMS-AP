@@ -116,6 +116,16 @@ src/app/(dashboard)/   # Paneles por rol
 src/app/api/           # API REST del MVP
 ```
 
+## Comunicados escolares
+
+El administrador publica mensajes, flyers (imagen/PDF) y enlaces desde `/admin`.
+Profesores y alumnos los ven en `/profesor` y `/alumno`.
+
+Los flyers se suben al bucket existente `materiales` bajo
+`announcements/{schoolId}/…` (mismas políticas de Storage; no hace falta un bucket `anuncios`).
+
+API: `GET/POST /api/anuncios`, `DELETE /api/anuncios/[id]` (POST/DELETE solo ADMIN).
+
 ## Notas / limitaciones (MVP)
 
 - Un solo colegio (sin multi-tenant).

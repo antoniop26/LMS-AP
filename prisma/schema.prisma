@@ -31,13 +31,14 @@ enum MaterialFolderKind {
 }
 
 model School {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  users     User[]
-  grades    Grade[]
-  subjects  Subject[]
+  id            String         @id @default(cuid())
+  name          String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  users         User[]
+  grades        Grade[]
+  subjects      Subject[]
+  announcements Announcement[]
 }
 
 model User {
@@ -58,6 +59,7 @@ model User {
   testsCreated    Test[]           @relation("TestCreator")
   attempts        TestAttempt[]
   gradesGiven     AnswerGrade[]    @relation("Grader")
+  announcements   Announcement[]
 
   @@index([schoolId])
   @@index([role])
@@ -292,4 +294,33 @@ model AnswerGrade {
   gradedBy  User?    @relation("Grader", fields: [gradedById], references: [id], onDelete: SetNull)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+enum AnnouncementKind {
+  MESSAGE
+  FLYER
+  LINK
+}
+
+model Announcement {
+  id          String           @id @default(cuid())
+  schoolId    String
+  school      School           @relation(fields: [schoolId], references: [id], onDelete: Cascade)
+  kind        AnnouncementKind
+  title       String
+  body        String?
+  linkUrl     String?
+  fileName    String?
+  filePath    String?
+  fileUrl     String?
+  mimeType    String?
+  createdById String
+  createdBy   User             @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  published   Boolean          @default(true)
+
+  @@index([schoolId])
+  @@index([createdById])
+  @@index([createdAt])
 }

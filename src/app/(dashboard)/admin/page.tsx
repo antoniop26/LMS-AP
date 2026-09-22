@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BookOpen, GraduationCap, Users, ClipboardList } from "lucide-react";
 import Link from "next/link";
+import { AdminAnnouncementsPanel } from "@/components/announcements/admin-announcements-panel";
 
 export default async function AdminDashboard() {
   const user = await requireUser(["ADMINISTRADOR"]);
@@ -48,6 +49,8 @@ export default async function AdminDashboard() {
           );
         })}
       </div>
+
+      <AdminAnnouncementsPanel />
     </div>
   );
 }

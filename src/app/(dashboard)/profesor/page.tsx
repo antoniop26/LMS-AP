@@ -2,6 +2,7 @@ import { requireUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
+import { AnnouncementsFeed } from "@/components/announcements/announcements-feed";
 
 export default async function ProfesorDashboard() {
   const user = await requireUser(["PROFESOR"]);
@@ -20,6 +21,9 @@ export default async function ProfesorDashboard() {
         <h1 className="text-2xl font-bold text-gray-900">Panel del profesor</h1>
         <p className="text-gray-500">Hola, {user.fullName}</p>
       </div>
+
+      <AnnouncementsFeed />
+
       <div className="grid gap-4 sm:grid-cols-3">
         <Card><CardHeader><CardTitle className="text-sm text-gray-500">Asignaturas</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{assignments.length}</p></CardContent></Card>
         <Card><CardHeader><CardTitle className="text-sm text-gray-500">Materiales</CardTitle></CardHeader><CardContent><p className="text-3xl font-bold">{materials}</p></CardContent></Card>

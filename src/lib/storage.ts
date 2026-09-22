@@ -75,3 +75,50 @@ export async function deleteMaterialFile(path: string) {
   const { error } = await supabase.storage.from(MATERIALS_BUCKET).remove([path]);
   if (error) throw new Error(error.message);
 }
+
+const ANNOUNCEMENT_MIME = [
+  "application/pdf",
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+];
+
+export function isAllowedAnnouncementFile(file: File) {
+  return (
+    ANNOUNCEMENT_MIME.includes(file.type) ||
+    !!file.name.match(/\.(pdf|png|jpe?g|gif|webp)$/i)
+  );
+}
+
+export function buildAnnouncementPath(schoolId: string, fileName: string) {
+  const safe = fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
+  const stamp = Date.now();
+  return `announcements/${schoolId}/${stamp}-${safe}`;
+}
+
+/** Upload flyer for school announcements into the materiales bucket. */
+export async function uploadAnnouncement(
+  file: File,
+  schoolId: string
+): Promise<{ path: string; publicUrl: string }> {
+  if (!isAllowedAnnouncementFile(file)) {
+    throw new Error("Tipo de archivo no permitido. Use PDF o imágenes.");
+  }
+  if (file.size > 20 * 1024 * 1024) {
+    throw new Error("El archivo no puede superar 20 MB.");
+  }
+
+  const supabase = createBrowserClient();
+  const path = buildAnnouncementPath(schoolId, file.name);
+
+  const { error } = await supabase.storage.from(MATERIALS_BUCKET).upload(path, file, {
+    cacheControl: "3600",
+    upsert: false,
+  });
+
+  if (error) throw new Error(error.message);
+
+  const { data } = supabase.storage.from(MATERIALS_BUCKET).getPublicUrl(path);
+  return { path, publicUrl: data.publicUrl };
+}
