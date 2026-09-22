@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,12 +27,19 @@ export default function UsuariosPage() {
     temporaryPassword: string;
   } | null>(null);
   const [resetError, setResetError] = useState("");
+  const [nameQuery, setNameQuery] = useState("");
 
   async function load() {
     const res = await fetch("/api/usuarios");
     setUsers(await res.json());
   }
   useEffect(() => { load(); }, []);
+
+  const filteredUsers = useMemo(() => {
+    const q = nameQuery.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter((u) => u.fullName.toLowerCase().includes(q));
+  }, [users, nameQuery]);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -164,8 +171,26 @@ export default function UsuariosPage() {
       )}
       {resetError && <p className="text-sm text-red-600">{resetError}</p>}
 
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Buscar usuarios</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Label htmlFor="user-name-filter" className="sr-only">Buscar por nombre</Label>
+          <Input
+            id="user-name-filter"
+            placeholder="Filtrar por nombre…"
+            value={nameQuery}
+            onChange={(e) => setNameQuery(e.target.value)}
+          />
+          <p className="mt-2 text-xs text-gray-500">
+            {filteredUsers.length} de {users.length} usuario{users.length === 1 ? "" : "s"}
+          </p>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-2">
-        {users.map((u) => (
+        {filteredUsers.map((u) => (
           <Card key={u.id}>
             <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3">
               <div>
@@ -197,6 +222,11 @@ export default function UsuariosPage() {
             </CardContent>
           </Card>
         ))}
+        {filteredUsers.length === 0 && (
+          <p className="text-sm text-gray-500">
+            {users.length === 0 ? "No hay usuarios registrados." : "Ningún usuario coincide con esa búsqueda."}
+          </p>
+        )}
       </div>
     </div>
   );
