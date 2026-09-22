@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ROLE_LABELS } from "@/lib/utils";
-import { KeyRound, Copy } from "lucide-react";
+import { KeyRound, Copy, Trash2 } from "lucide-react";
 
 type User = { id: string; fullName: string; email: string; role: string };
 
@@ -76,7 +76,21 @@ export default function UsuariosPage() {
     }
   }
 
-  async function copyTemp() {
+  async function removeUser(u: User) {
+    if (!confirm(`¿Eliminar a ${u.fullName} (${u.email})? Esta acción no se puede deshacer.`)) return;
+    setResetError("");
+    const res = await fetch(`/api/usuarios/${u.id}`, { method: "DELETE" });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setResetError(data.error || "No se pudo eliminar el usuario");
+      return;
+    }
+    if (tempPasswordInfo?.email === u.email) setTempPasswordInfo(null);
+    setMsg(`Usuario eliminado: ${u.fullName}`);
+    load();
+  }
+
+    async function copyTemp() {
     if (!tempPasswordInfo) return;
     try {
       await navigator.clipboard.writeText(tempPasswordInfo.temporaryPassword);
@@ -169,6 +183,15 @@ export default function UsuariosPage() {
                 >
                   <KeyRound className="mr-1 h-4 w-4" />
                   {resettingId === u.id ? "Generando…" : "Contraseña temporal"}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  title="Eliminar usuario"
+                  onClick={() => removeUser(u)}
+                >
+                  <Trash2 className="h-4 w-4 text-red-500" />
                 </Button>
               </div>
             </CardContent>
