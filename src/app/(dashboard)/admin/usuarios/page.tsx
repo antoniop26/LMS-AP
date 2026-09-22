@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { ROLE_LABELS } from "@/lib/utils";
+import { KeyRound, Copy } from "lucide-react";
 
 type User = { id: string; fullName: string; email: string; role: string };
 
@@ -19,6 +20,13 @@ export default function UsuariosPage() {
   const [password, setPassword] = useState("demo1234");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resettingId, setResettingId] = useState<string | null>(null);
+  const [tempPasswordInfo, setTempPasswordInfo] = useState<{
+    fullName: string;
+    email: string;
+    temporaryPassword: string;
+  } | null>(null);
+  const [resetError, setResetError] = useState("");
 
   async function load() {
     const res = await fetch("/api/usuarios");
@@ -42,6 +50,40 @@ export default function UsuariosPage() {
       load();
     }
     setLoading(false);
+  }
+
+  async function resetPassword(u: User) {
+    if (!confirm(`¿Generar contraseña temporal para ${u.fullName}? La anterior dejará de funcionar.`)) return;
+    setResettingId(u.id);
+    setResetError("");
+    setTempPasswordInfo(null);
+    try {
+      const res = await fetch(`/api/usuarios/${u.id}/reset-password`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setResetError(data.error || "No se pudo generar la contraseña");
+        return;
+      }
+      setTempPasswordInfo({
+        fullName: data.fullName,
+        email: data.email,
+        temporaryPassword: data.temporaryPassword,
+      });
+    } catch {
+      setResetError("Error de red al generar la contraseña");
+    } finally {
+      setResettingId(null);
+    }
+  }
+
+  async function copyTemp() {
+    if (!tempPasswordInfo) return;
+    try {
+      await navigator.clipboard.writeText(tempPasswordInfo.temporaryPassword);
+      setMsg("Contraseña copiada al portapapeles");
+    } catch {
+      setMsg("No se pudo copiar; selecciónela manualmente");
+    }
   }
 
   return (
@@ -79,15 +121,56 @@ export default function UsuariosPage() {
           </form>
         </CardContent>
       </Card>
+
+      {tempPasswordInfo && (
+        <Card className="border-blue-300 bg-blue-50">
+          <CardHeader>
+            <CardTitle className="text-base">Contraseña temporal generada</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            <p>
+              Para <span className="font-medium">{tempPasswordInfo.fullName}</span> ({tempPasswordInfo.email})
+            </p>
+            <p className="rounded-md bg-white px-3 py-2 font-mono text-base tracking-wide text-gray-900">
+              {tempPasswordInfo.temporaryPassword}
+            </p>
+            <p className="text-gray-600">
+              Compártala de forma segura. La contraseña anterior ya no funciona. El usuario puede entrar con esta y, si quiere, pedirle que la cambie más adelante.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" size="sm" onClick={copyTemp}>
+                <Copy className="mr-1 h-4 w-4" /> Copiar
+              </Button>
+              <Button type="button" size="sm" variant="outline" onClick={() => setTempPasswordInfo(null)}>
+                Cerrar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {resetError && <p className="text-sm text-red-600">{resetError}</p>}
+
       <div className="grid gap-2">
         {users.map((u) => (
           <Card key={u.id}>
-            <CardContent className="flex items-center justify-between py-3">
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 py-3">
               <div>
                 <p className="font-medium text-gray-900">{u.fullName}</p>
                 <p className="text-sm text-gray-500">{u.email}</p>
               </div>
-              <Badge variant="secondary">{ROLE_LABELS[u.role] || u.role}</Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">{ROLE_LABELS[u.role] || u.role}</Badge>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  disabled={resettingId === u.id}
+                  onClick={() => resetPassword(u)}
+                >
+                  <KeyRound className="mr-1 h-4 w-4" />
+                  {resettingId === u.id ? "Generando…" : "Contraseña temporal"}
+                </Button>
+              </div>
             </CardContent>
           </Card>
         ))}
