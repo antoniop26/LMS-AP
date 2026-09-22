@@ -44,12 +44,33 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
   const body = await req.json();
+  const data: {
+    published?: boolean;
+    title?: string;
+    opensAt?: Date | null;
+    closesAt?: Date | null;
+  } = {};
+  if (body.published !== undefined) data.published = Boolean(body.published);
+  if (body.title) data.title = String(body.title);
+  if ("opensAt" in body) data.opensAt = body.opensAt ? new Date(body.opensAt) : null;
+  if ("closesAt" in body) data.closesAt = body.closesAt ? new Date(body.closesAt) : null;
+
+  if (data.opensAt !== undefined || data.closesAt !== undefined) {
+    const current = await prisma.test.findUnique({ where: { id: params.id } });
+    if (!current) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+    const opensAt = data.opensAt !== undefined ? data.opensAt : current.opensAt;
+    const closesAt = data.closesAt !== undefined ? data.closesAt : current.closesAt;
+    if (opensAt && closesAt && opensAt >= closesAt) {
+      return NextResponse.json(
+        { error: "La fecha de inicio debe ser anterior a la de finalización" },
+        { status: 400 }
+      );
+    }
+  }
+
   const test = await prisma.test.update({
     where: { id: params.id },
-    data: {
-      ...(body.published !== undefined ? { published: Boolean(body.published) } : {}),
-      ...(body.title ? { title: String(body.title) } : {}),
-    },
+    data,
   });
   return NextResponse.json(test);
 }

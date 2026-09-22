@@ -64,9 +64,17 @@ export async function POST(req: NextRequest) {
   const published = Boolean(body.published);
   const maxScore = Number(body.maxScore) || 100;
   const questions = Array.isArray(body.questions) ? body.questions : [];
+  const opensAt = body.opensAt ? new Date(body.opensAt) : null;
+  const closesAt = body.closesAt ? new Date(body.closesAt) : null;
 
   if (!title || !subjectId) {
     return NextResponse.json({ error: "Datos incompletos" }, { status: 400 });
+  }
+  if (opensAt && closesAt && opensAt >= closesAt) {
+    return NextResponse.json(
+      { error: "La fecha de inicio debe ser anterior a la de finalización" },
+      { status: 400 }
+    );
   }
 
   const test = await prisma.test.create({
@@ -77,6 +85,8 @@ export async function POST(req: NextRequest) {
       groupId,
       published,
       maxScore,
+      opensAt,
+      closesAt,
       creatorId: user.id,
       questions: {
         create: questions.map((q: {

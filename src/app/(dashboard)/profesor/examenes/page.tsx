@@ -19,6 +19,21 @@ type Q = {
   options: { text: string; isCorrect: boolean }[];
 };
 
+function toLocalInput(iso: string | null | undefined) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function formatWindow(opensAt?: string | null, closesAt?: string | null) {
+  if (!opensAt && !closesAt) return "Sin límite de tiempo";
+  const parts: string[] = [];
+  if (opensAt) parts.push(`Abre ${new Date(opensAt).toLocaleString("es-PA")}`);
+  if (closesAt) parts.push(`Cierra ${new Date(closesAt).toLocaleString("es-PA")}`);
+  return parts.join(" · ");
+}
+
 export default function ProfesorExamenesPage() {
   const [tests, setTests] = useState<any[]>([]);
   const [subjects, setSubjects] = useState<any[]>([]);
@@ -29,10 +44,16 @@ export default function ProfesorExamenesPage() {
   const [subjectId, setSubjectId] = useState("");
   const [groupId, setGroupId] = useState("");
   const [published, setPublished] = useState(true);
+  const [opensAt, setOpensAt] = useState("");
+  const [closesAt, setClosesAt] = useState("");
   const [questions, setQuestions] = useState<Q[]>([
     { prompt: "", type: "MULTIPLE_CHOICE", points: 1, options: [{ text: "", isCorrect: true }, { text: "", isCorrect: false }] },
   ]);
   const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editOpensAt, setEditOpensAt] = useState("");
+  const [editClosesAt, setEditClosesAt] = useState("");
+  const [savingWindow, setSavingWindow] = useState(false);
 
   async function load() {
     const [t, s, g] = await Promise.all([
@@ -56,10 +77,23 @@ export default function ProfesorExamenesPage() {
     await fetch("/api/examenes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title, description, subjectId, groupId: groupId || null, published, questions }),
+      body: JSON.stringify({
+        title,
+        description,
+        subjectId,
+        groupId: groupId || null,
+        published,
+        opensAt: opensAt ? new Date(opensAt).toISOString() : null,
+        closesAt: closesAt ? new Date(closesAt).toISOString() : null,
+        questions,
+      }),
     });
     setShowForm(false);
-    setTitle(""); setDescription(""); setQuestions([{ prompt: "", type: "MULTIPLE_CHOICE", points: 1, options: [{ text: "", isCorrect: true }, { text: "", isCorrect: false }] }]);
+    setTitle("");
+    setDescription("");
+    setOpensAt("");
+    setClosesAt("");
+    setQuestions([{ prompt: "", type: "MULTIPLE_CHOICE", points: 1, options: [{ text: "", isCorrect: true }, { text: "", isCorrect: false }] }]);
     setLoading(false);
     load();
   }
@@ -76,6 +110,27 @@ export default function ProfesorExamenesPage() {
   async function remove(id: string) {
     if (!confirm("¿Eliminar examen?")) return;
     await fetch(`/api/examenes/${id}`, { method: "DELETE" });
+    load();
+  }
+
+  function startEditWindow(t: any) {
+    setEditingId(t.id);
+    setEditOpensAt(toLocalInput(t.opensAt));
+    setEditClosesAt(toLocalInput(t.closesAt));
+  }
+
+  async function saveWindow(id: string) {
+    setSavingWindow(true);
+    await fetch(`/api/examenes/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        opensAt: editOpensAt ? new Date(editOpensAt).toISOString() : null,
+        closesAt: editClosesAt ? new Date(editClosesAt).toISOString() : null,
+      }),
+    });
+    setEditingId(null);
+    setSavingWindow(false);
     load();
   }
 
@@ -117,6 +172,17 @@ export default function ProfesorExamenesPage() {
                     <SelectContent>{groups.map((g: any) => <SelectItem key={g.id} value={g.id}>{g.grade.name} {g.name}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
+                <div className="space-y-1">
+                  <Label>Disponible desde</Label>
+                  <Input type="datetime-local" value={opensAt} onChange={(e) => setOpensAt(e.target.value)} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Disponible hasta</Label>
+                  <Input type="datetime-local" value={closesAt} onChange={(e) => setClosesAt(e.target.value)} />
+                </div>
+                <p className="text-xs text-gray-500 sm:col-span-2">
+                  Opcional. Si deja vacío un lado, no hay límite en esa fecha.
+                </p>
               </div>
 
               <div className="space-y-4">
@@ -195,27 +261,50 @@ export default function ProfesorExamenesPage() {
       <div className="grid gap-3">
         {tests.map((t) => (
           <Card key={t.id}>
-            <CardContent className="flex items-center justify-between py-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <p className="font-medium text-gray-900">{t.title}</p>
-                  <Badge variant={t.published ? "success" : "secondary"}>{t.published ? "Publicado" : "Borrador"}</Badge>
+            <CardContent className="space-y-3 py-4">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-gray-900">{t.title}</p>
+                    <Badge variant={t.published ? "success" : "secondary"}>{t.published ? "Publicado" : "Borrador"}</Badge>
+                  </div>
+                  <p className="text-sm text-gray-500">
+                    {t.subject?.name} · {t._count?.questions || 0} preguntas · {t._count?.attempts || 0} intentos
+                  </p>
+                  <p className="text-sm text-gray-500">{formatWindow(t.opensAt, t.closesAt)}</p>
                 </div>
-                <p className="text-sm text-gray-500">
-                  {t.subject?.name} · {t._count?.questions || 0} preguntas · {t._count?.attempts || 0} intentos
-                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Link href={`/profesor/examenes/${t.id}`}>
+                    <Button variant="outline" size="sm">Ver / Calificar</Button>
+                  </Link>
+                  <Button variant="outline" size="sm" onClick={() => (editingId === t.id ? setEditingId(null) : startEditWindow(t))}>
+                    {editingId === t.id ? "Cancelar plazos" : "Editar plazos"}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => togglePublish(t.id, t.published)}>
+                    {t.published ? "Ocultar" : "Publicar"}
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => remove(t.id)}>
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Link href={`/profesor/examenes/${t.id}`}>
-                  <Button variant="outline" size="sm">Ver / Calificar</Button>
-                </Link>
-                <Button variant="outline" size="sm" onClick={() => togglePublish(t.id, t.published)}>
-                  {t.published ? "Ocultar" : "Publicar"}
-                </Button>
-                <Button variant="ghost" size="icon" onClick={() => remove(t.id)}>
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
-              </div>
+              {editingId === t.id && (
+                <div className="grid gap-3 rounded-md border border-dashed border-gray-200 p-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <Label>Disponible desde</Label>
+                    <Input type="datetime-local" value={editOpensAt} onChange={(e) => setEditOpensAt(e.target.value)} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Disponible hasta</Label>
+                    <Input type="datetime-local" value={editClosesAt} onChange={(e) => setEditClosesAt(e.target.value)} />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Button size="sm" disabled={savingWindow} onClick={() => saveWindow(t.id)}>
+                      {savingWindow ? "Guardando…" : "Guardar plazos"}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         ))}

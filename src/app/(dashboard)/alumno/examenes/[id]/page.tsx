@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
+import { examWindowMessage, examWindowStatus } from "@/lib/exam-window";
 
 export default function TomarExamenPage() {
   const params = useParams();
@@ -55,6 +56,13 @@ export default function TomarExamenPage() {
         <Link href="/alumno/examenes" className="text-sm text-blue-600 hover:underline">← Volver</Link>
         <h1 className="mt-2 text-2xl font-bold text-gray-900">{test.title}</h1>
         <p className="text-gray-500">{test.description || test.subject?.name}</p>
+        {(test.opensAt || test.closesAt) && (
+          <p className="mt-1 text-sm text-gray-500">
+            {test.opensAt ? `Abre ${new Date(test.opensAt).toLocaleString("es-PA")}` : "Sin inicio fijo"}
+            {" · "}
+            {test.closesAt ? `Cierra ${new Date(test.closesAt).toLocaleString("es-PA")}` : "Sin cierre fijo"}
+          </p>
+        )}
       </div>
 
       {done ? (
@@ -64,7 +72,26 @@ export default function TomarExamenPage() {
             <p className="text-sm text-gray-500 mt-1">Estado: {attempt.status}{attempt.score != null ? ` · Nota: ${attempt.score}/${test.maxScore}` : ""}</p>
           </CardContent>
         </Card>
-      ) : (
+      ) : (() => {
+        const window = examWindowStatus(test.opensAt, test.closesAt);
+        if (!window.open) {
+          return (
+            <Card>
+              <CardContent className="py-6">
+                <p className="font-medium">{examWindowMessage(window.reason)}</p>
+                <p className="mt-1 text-sm text-gray-500">
+                  {window.reason === "not_open" && test.opensAt
+                    ? `Disponible desde ${new Date(test.opensAt).toLocaleString("es-PA")}`
+                    : ""}
+                  {window.reason === "closed" && test.closesAt
+                    ? `Cerró el ${new Date(test.closesAt).toLocaleString("es-PA")}`
+                    : ""}
+                </p>
+              </CardContent>
+            </Card>
+          );
+        }
+        return (
         <form onSubmit={submit} className="space-y-4">
           {test.questions?.map((q: any, i: number) => (
             <Card key={q.id}>
@@ -108,7 +135,8 @@ export default function TomarExamenPage() {
           {error && <p className="text-sm text-red-600">{error}</p>}
           <Button type="submit" disabled={loading}>{loading ? "Enviando…" : "Enviar examen"}</Button>
         </form>
-      )}
+        );
+      })()}
     </div>
   );
 }

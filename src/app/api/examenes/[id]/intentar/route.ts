@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
+import { examWindowMessage, examWindowStatus } from "@/lib/exam-window";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getSessionUser();
@@ -14,6 +15,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   });
   if (!test || !test.published) {
     return NextResponse.json({ error: "Examen no disponible" }, { status: 404 });
+  }
+
+  const window = examWindowStatus(test.opensAt, test.closesAt);
+  if (!window.open) {
+    return NextResponse.json({ error: examWindowMessage(window.reason) }, { status: 403 });
   }
 
   const existing = await prisma.testAttempt.findUnique({

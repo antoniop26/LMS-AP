@@ -6,14 +6,25 @@ import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { examWindowStatus } from "@/lib/exam-window";
 
 type TestRow = {
   id: string;
   title: string;
   subject?: { name: string };
+  opensAt?: string | null;
+  closesAt?: string | null;
   _count?: { questions: number };
   attempts?: { status: string; score: number | null }[];
 };
+
+function formatWindow(opensAt?: string | null, closesAt?: string | null) {
+  if (!opensAt && !closesAt) return null;
+  const parts: string[] = [];
+  if (opensAt) parts.push(`Abre ${new Date(opensAt).toLocaleString("es-PA")}`);
+  if (closesAt) parts.push(`Cierra ${new Date(closesAt).toLocaleString("es-PA")}`);
+  return parts.join(" · ");
+}
 
 export default function AlumnoExamenesAsignaturaPage() {
   const params = useParams();
@@ -65,6 +76,8 @@ export default function AlumnoExamenesAsignaturaPage() {
           tests.map((t) => {
             const attempt = t.attempts?.[0];
             const done = attempt && attempt.status !== "IN_PROGRESS";
+            const window = examWindowStatus(t.opensAt, t.closesAt);
+            const windowLabel = formatWindow(t.opensAt, t.closesAt);
             return (
               <Card key={t.id}>
                 <CardContent className="flex items-center justify-between py-4">
@@ -72,6 +85,7 @@ export default function AlumnoExamenesAsignaturaPage() {
                     <p className="font-medium text-gray-900">{t.title}</p>
                     <p className="text-sm text-gray-500">
                       {t._count?.questions || 0} preguntas
+                      {windowLabel ? ` · ${windowLabel}` : ""}
                     </p>
                     {done && (
                       <Badge
@@ -81,17 +95,27 @@ export default function AlumnoExamenesAsignaturaPage() {
                         {attempt.status === "GRADED" ? `Nota: ${attempt.score}` : "Enviado"}
                       </Badge>
                     )}
+                    {!done && !window.open && window.reason === "not_open" && (
+                      <Badge variant="secondary" className="mt-1">Próximamente</Badge>
+                    )}
+                    {!done && !window.open && window.reason === "closed" && (
+                      <Badge variant="secondary" className="mt-1">Cerrado</Badge>
+                    )}
                   </div>
-                  {!done ? (
-                    <Link href={`/alumno/examenes/${t.id}`}>
-                      <Button size="sm">Presentar</Button>
-                    </Link>
-                  ) : (
+                  {done ? (
                     <Link href={`/alumno/examenes/${t.id}`}>
                       <Button variant="outline" size="sm">
                         Ver
                       </Button>
                     </Link>
+                  ) : window.open ? (
+                    <Link href={`/alumno/examenes/${t.id}`}>
+                      <Button size="sm">Presentar</Button>
+                    </Link>
+                  ) : (
+                    <Button size="sm" disabled>
+                      {window.reason === "not_open" ? "Aún no" : "Cerrado"}
+                    </Button>
                   )}
                 </CardContent>
               </Card>
