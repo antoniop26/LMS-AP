@@ -69,6 +69,19 @@ export default function AsignacionesPage() {
     );
   }, [studentGroups, studentNameQuery]);
 
+  const availableStudents = useMemo(() => {
+    const assignedIds = new Set(
+      studentGroups.map((row) => String(row.studentId || row.student?.id || ""))
+    );
+    return students.filter((s) => !assignedIds.has(s.id));
+  }, [students, studentGroups]);
+
+  useEffect(() => {
+    if (studentId && !availableStudents.some((s) => s.id === studentId)) {
+      setStudentId("");
+    }
+  }, [availableStudents, studentId]);
+
   async function assignTeacher(e: React.FormEvent) {
     e.preventDefault();
     await fetch("/api/asignaciones", {
@@ -227,13 +240,22 @@ export default function AsignacionesPage() {
                       <SelectValue placeholder="Seleccione" />
                     </SelectTrigger>
                     <SelectContent>
-                      {students.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.fullName}
-                        </SelectItem>
-                      ))}
+                      {availableStudents.length === 0 ? (
+                        <div className="px-2 py-1.5 text-sm text-gray-500">
+                          Todos los alumnos ya tienen grupo
+                        </div>
+                      ) : (
+                        availableStudents.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.fullName}
+                          </SelectItem>
+                        ))
+                      )}
                     </SelectContent>
                   </Select>
+                  {availableStudents.length === 0 && (
+                    <p className="text-xs text-gray-500">No quedan alumnos sin asignar.</p>
+                  )}
                 </div>
                 <div className="space-y-1">
                   <Label>Grupo</Label>
