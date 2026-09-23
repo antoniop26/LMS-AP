@@ -50,19 +50,23 @@ export default function ProfesorExamenesPage() {
 
   async function load() {
     const [t, s, g] = await Promise.all([
-      fetch("/api/examenes"),
-      fetch("/api/asignaturas"),
-      fetch("/api/grupos"),
+      fetch("/api/examenes", { credentials: "same-origin" }),
+      fetch("/api/asignaturas", { credentials: "same-origin" }),
+      fetch("/api/grupos", { credentials: "same-origin" }),
     ]);
-    setTests(await t.json());
-    setSubjects(await s.json());
-    setGroups(await g.json());
+    const testsData = t.ok ? await t.json() : [];
+    const subjectsData = s.ok ? await s.json() : [];
+    const groupsData = g.ok ? await g.json() : [];
+    setTests(Array.isArray(testsData) ? testsData : []);
+    setSubjects(Array.isArray(subjectsData) ? subjectsData : []);
+    setGroups(Array.isArray(groupsData) ? groupsData : []);
   }
   useEffect(() => { load(); }, []);
 
   const grouped = useMemo(() => {
     const map = new Map<string, { subject: any; group: any | null; tests: any[] }>();
-    for (const t of tests) {
+    const list = Array.isArray(tests) ? tests : [];
+    for (const t of list) {
       if (!t || !t.subject) continue;
       const key = `${t.subjectId}:${t.groupId || "all"}`;
       if (!map.has(key)) {
