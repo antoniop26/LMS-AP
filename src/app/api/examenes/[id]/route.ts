@@ -10,7 +10,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     where: { id: params.id },
     include: {
       subject: true,
-      group: true,
+      group: { include: { grade: true } },
       questions: {
         include: {
           options: {
@@ -18,19 +18,28 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
               id: true,
               text: true,
               order: true,
-              // Hide correct answers from students until graded view
               isCorrect: user.role !== "ALUMNO",
             },
           },
         },
         orderBy: { order: "asc" },
       },
-      attempts: user.role === "ALUMNO" ? { where: { studentId: user.id }, include: { answers: true } } : {
-        include: {
-          student: { select: { id: true, fullName: true, email: true } },
-          answers: { include: { grade: true, question: true } },
-        },
-      },
+      attempts:
+        user.role === "ALUMNO"
+          ? { where: { studentId: user.id }, include: { answers: true } }
+          : {
+              where: { status: { in: ["SUBMITTED", "GRADED"] } },
+              include: {
+                student: { select: { id: true, fullName: true, email: true } },
+                answers: {
+                  include: {
+                    grade: true,
+                    question: { include: { options: true } },
+                  },
+                },
+              },
+              orderBy: { submittedAt: "desc" },
+            },
     },
   });
 

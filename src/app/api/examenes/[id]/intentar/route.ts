@@ -71,8 +71,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         update: { points, feedback: isRight ? "Correcto" : "Incorrecto" },
       });
     } else if (q.type === "SHORT_ANSWER" && q.correctText) {
-      const isRight =
-        (ans.textAnswer || "").trim().toLowerCase() === q.correctText.trim().toLowerCase();
+      const normalize = (s: string) =>
+        s.trim().toLowerCase().replace(/[.,;:!?¡¿]+$/g, "").replace(/\s+/g, " ");
+      const isRight = normalize(ans.textAnswer || "") === normalize(q.correctText);
       const points = isRight ? q.points : 0;
       autoScore += points;
       await prisma.answerGrade.upsert({

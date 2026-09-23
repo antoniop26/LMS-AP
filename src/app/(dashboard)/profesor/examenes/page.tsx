@@ -300,13 +300,13 @@ export default function ProfesorExamenesPage() {
               {block.tests.map((t) => (
                 <Card key={t.id}>
                   <CardContent className="space-y-3 py-4">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="space-y-3">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="font-medium text-gray-900">{t.title}</p>
                           {windowBadge(t)}
                         </div>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-500 break-words">
                           {t._count?.questions || 0} pregunta{(t._count?.questions || 0) === 1 ? "" : "s"}
                           {" · "}
                           {t._count?.attempts || 0} intento{(t._count?.attempts || 0) === 1 ? "" : "s"}
@@ -321,7 +321,7 @@ export default function ProfesorExamenesPage() {
                           <p className="mt-1 text-sm text-gray-600">{t.description}</p>
                         )}
                       </div>
-                      <div className="flex shrink-0 flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2">
                         <Link href={`/profesor/examenes/${t.id}`}>
                           <Button variant="outline" size="sm">Ver / Calificar</Button>
                         </Link>
