@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,7 @@ export default function AsignaturasPage() {
   const [code, setCode] = useState("");
   const [gradeId, setGradeId] = useState("");
   const [loading, setLoading] = useState(false);
+  const [nameQuery, setNameQuery] = useState("");
 
   async function load() {
     const [g, s] = await Promise.all([fetch("/api/grados"), fetch("/api/asignaturas")]);
@@ -25,6 +26,15 @@ export default function AsignaturasPage() {
     setSubjects(await s.json());
   }
   useEffect(() => { load(); }, []);
+
+  const filteredSubjects = useMemo(() => {
+    const q = nameQuery.trim().toLowerCase();
+    if (!q) return subjects;
+    return subjects.filter((s) => {
+      const haystack = `${s.name} ${s.code || ""} ${s.grade?.name || ""}`.toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [subjects, nameQuery]);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -71,8 +81,27 @@ export default function AsignaturasPage() {
           </form>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Buscar asignaturas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Label htmlFor="subject-name-filter" className="sr-only">Buscar por nombre</Label>
+          <Input
+            id="subject-name-filter"
+            placeholder="Filtrar por nombre, código o grado…"
+            value={nameQuery}
+            onChange={(e) => setNameQuery(e.target.value)}
+          />
+          <p className="mt-2 text-xs text-gray-500">
+            {filteredSubjects.length} de {subjects.length} asignatura{subjects.length === 1 ? "" : "s"}
+          </p>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-3">
-        {subjects.map((s) => (
+        {filteredSubjects.map((s) => (
           <Card key={s.id}>
             <CardContent className="flex items-center justify-between py-4">
               <div>
@@ -85,6 +114,11 @@ export default function AsignaturasPage() {
             </CardContent>
           </Card>
         ))}
+        {filteredSubjects.length === 0 && (
+          <p className="text-sm text-gray-500">
+            {subjects.length === 0 ? "Aún no hay asignaturas." : "Ninguna asignatura coincide con la búsqueda."}
+          </p>
+        )}
       </div>
     </div>
   );

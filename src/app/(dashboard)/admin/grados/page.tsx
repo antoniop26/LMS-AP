@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,7 @@ export default function GradosPage() {
   const [name, setName] = useState("");
   const [level, setLevel] = useState("1");
   const [loading, setLoading] = useState(false);
+  const [nameQuery, setNameQuery] = useState("");
 
   async function load() {
     const res = await fetch("/api/grados");
@@ -21,6 +22,16 @@ export default function GradosPage() {
   }
 
   useEffect(() => { load(); }, []);
+
+  const filteredGrades = useMemo(() => {
+    const q = nameQuery.trim().toLowerCase();
+    if (!q) return grades;
+    return grades.filter(
+      (g) =>
+        g.name.toLowerCase().includes(q) ||
+        String(g.level).includes(q)
+    );
+  }, [grades, nameQuery]);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -60,8 +71,27 @@ export default function GradosPage() {
           </form>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Buscar grados</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Label htmlFor="grade-name-filter" className="sr-only">Buscar por nombre</Label>
+          <Input
+            id="grade-name-filter"
+            placeholder="Filtrar por nombre o nivel…"
+            value={nameQuery}
+            onChange={(e) => setNameQuery(e.target.value)}
+          />
+          <p className="mt-2 text-xs text-gray-500">
+            {filteredGrades.length} de {grades.length} grado{grades.length === 1 ? "" : "s"}
+          </p>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-3">
-        {grades.map((g) => (
+        {filteredGrades.map((g) => (
           <Card key={g.id}>
             <CardContent className="flex items-center justify-between py-4">
               <div>
@@ -74,7 +104,11 @@ export default function GradosPage() {
             </CardContent>
           </Card>
         ))}
-        {grades.length === 0 && <p className="text-sm text-gray-500">Aún no hay grados.</p>}
+        {filteredGrades.length === 0 && (
+          <p className="text-sm text-gray-500">
+            {grades.length === 0 ? "Aún no hay grados." : "Ningún grado coincide con la búsqueda."}
+          </p>
+        )}
       </div>
     </div>
   );

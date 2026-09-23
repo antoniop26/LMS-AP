@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +17,7 @@ export default function GruposPage() {
   const [name, setName] = useState("");
   const [gradeId, setGradeId] = useState("");
   const [loading, setLoading] = useState(false);
+  const [nameQuery, setNameQuery] = useState("");
 
   async function load() {
     const [g, gr] = await Promise.all([fetch("/api/grados"), fetch("/api/grupos")]);
@@ -24,6 +25,15 @@ export default function GruposPage() {
     setGroups(await gr.json());
   }
   useEffect(() => { load(); }, []);
+
+  const filteredGroups = useMemo(() => {
+    const q = nameQuery.trim().toLowerCase();
+    if (!q) return groups;
+    return groups.filter((g) => {
+      const label = `${g.grade.name} ${g.name} grupo ${g.name}`.toLowerCase();
+      return label.includes(q);
+    });
+  }, [groups, nameQuery]);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
@@ -68,8 +78,27 @@ export default function GruposPage() {
           </form>
         </CardContent>
       </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Buscar grupos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Label htmlFor="group-name-filter" className="sr-only">Buscar por nombre</Label>
+          <Input
+            id="group-name-filter"
+            placeholder="Filtrar por grado o grupo…"
+            value={nameQuery}
+            onChange={(e) => setNameQuery(e.target.value)}
+          />
+          <p className="mt-2 text-xs text-gray-500">
+            {filteredGroups.length} de {groups.length} grupo{groups.length === 1 ? "" : "s"}
+          </p>
+        </CardContent>
+      </Card>
+
       <div className="grid gap-3">
-        {groups.map((g) => (
+        {filteredGroups.map((g) => (
           <Card key={g.id}>
             <CardContent className="flex items-center justify-between py-4">
               <div>
@@ -82,6 +111,11 @@ export default function GruposPage() {
             </CardContent>
           </Card>
         ))}
+        {filteredGroups.length === 0 && (
+          <p className="text-sm text-gray-500">
+            {groups.length === 0 ? "Aún no hay grupos." : "Ningún grupo coincide con la búsqueda."}
+          </p>
+        )}
       </div>
     </div>
   );
