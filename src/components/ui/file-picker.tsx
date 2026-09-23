@@ -14,7 +14,7 @@ export type FilePickerProps = {
   onFileChange: (file: File | null) => void;
   className?: string;
   buttonLabel?: string;
-  /** When true (default), show «Usar archivo de ejemplo» for remote desktop / no OS dialog. */
+  /** Set false to hide the local-only «Usar archivo de ejemplo» control. */
   allowDemoFile?: boolean;
 };
 
@@ -27,12 +27,24 @@ export function FilePicker({
   onFileChange,
   className,
   buttonLabel = "Seleccionar archivo",
-  allowDemoFile = true,
+  allowDemoFile,
 }: FilePickerProps) {
   const inputRef = React.useRef<HTMLInputElement>(null);
   const generatedId = React.useId();
   const inputId = id ?? generatedId;
   const [dragging, setDragging] = React.useState(false);
+  const [isLocalHost, setIsLocalHost] = React.useState(
+    process.env.NODE_ENV === "development"
+  );
+  const showDemo = allowDemoFile !== false && isLocalHost;
+
+  React.useEffect(() => {
+    setIsLocalHost(
+      process.env.NODE_ENV === "development" ||
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1"
+    );
+  }, []);
 
   function clear() {
     onFileChange(null);
@@ -135,7 +147,7 @@ export function FilePicker({
             <FileIcon className="mr-2 h-4 w-4" aria-hidden />
             {buttonLabel}
           </label>
-          {allowDemoFile && (
+          {showDemo && (
             <Button
               type="button"
               variant="secondary"
@@ -171,10 +183,12 @@ export function FilePicker({
           "Ningún archivo seleccionado"
         )}
       </p>
-      <p className="text-xs text-gray-500">
-        Si el explorador no abre (pantalla remota), arrastre el archivo o use el
-        archivo de ejemplo.
-      </p>
+      {showDemo && (
+        <p className="text-xs text-gray-500">
+          Si el explorador no abre (pantalla remota), arrastre el archivo o use
+          el archivo de ejemplo.
+        </p>
+      )}
     </div>
   );
 }
