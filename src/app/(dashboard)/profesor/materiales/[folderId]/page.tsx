@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,12 @@ type Material = {
   createdAt: string;
 };
 
+type RosterEntry = {
+  student: { id: string; fullName: string; email?: string };
+  status: "ENVIADO" | "NO_ENVIADO";
+  materials: Material[];
+};
+
 type Folder = {
   id: string;
   name: string;
@@ -37,6 +43,7 @@ type Folder = {
   subject: { id: string; name: string };
   group: { id: string; name: string; grade: { name: string } };
   materials: Material[];
+  roster?: RosterEntry[];
 };
 
 export default function ProfesorCarpetaDetallePage() {
@@ -49,20 +56,41 @@ export default function ProfesorCarpetaDetallePage() {
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
+    setLoadError("");
     const [me, f] = await Promise.all([
-      fetch("/api/auth/me"),
-      fetch(`/api/carpetas/${folderId}`),
+      fetch("/api/auth/me", { credentials: "same-origin" }),
+      fetch(`/api/carpetas/${folderId}`, { credentials: "same-origin" }),
     ]);
-    const meData = await me.json();
-    setSchoolId(meData.schoolId);
-    if (f.ok) setFolder(await f.json());
-    else setFolder(null);
-  }
+    const meData = await me.json().catch(() => ({}));
+    setSchoolId(meData.schoolId || "");
+    if (f.ok) {
+      setFolder(await f.json());
+    } else {
+      const data = await f.json().catch(() => ({}));
+      setFolder(null);
+      setLoadError(data.error || "No se pudo cargar la carpeta.");
+    }
+  }, [folderId]);
+
   useEffect(() => {
     if (folderId) load();
-  }, [folderId]);
+  }, [folderId, load]);
+
+  const roster: RosterEntry[] = useMemo(() => {
+    if (Array.isArray(folder?.roster)) return folder.roster;
+    return [];
+  }, [folder]);
+
+  const selectedIndex = useMemo(() => {
+    if (!selectedStudentId) return -1;
+    return roster.findIndex((r) => r.student.id === selectedStudentId);
+  }, [roster, selectedStudentId]);
+
+  const selectedEntry = selectedIndex >= 0 ? roster[selectedIndex] : null;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -104,6 +132,40 @@ export default function ProfesorCarpetaDetallePage() {
     load();
   }
 
+  function openStudent(studentId: string) {
+    setSelectedStudentId(studentId);
+  }
+
+  function goPrev() {
+    if (roster.length === 0 || selectedIndex < 0) return;
+    const next = (selectedIndex - 1 + roster.length) % roster.length;
+    setSelectedStudentId(roster[next].student.id);
+  }
+
+  function goNext() {
+    if (roster.length === 0 || selectedIndex < 0) return;
+    const next = (selectedIndex + 1) % roster.length;
+    setSelectedStudentId(roster[next].student.id);
+  }
+
+  function backToRoster() {
+    setSelectedStudentId(null);
+  }
+
+  if (loadError && !folder) {
+    return (
+      <div className="space-y-3">
+        <Link href="/profesor/materiales" className="inline-flex items-center text-sm text-blue-700 hover:underline">
+          <ArrowLeft className="mr-1 h-4 w-4" /> Volver a carpetas
+        </Link>
+        <p className="text-sm text-red-600">{loadError}</p>
+        <Button size="sm" variant="outline" onClick={load}>
+          Reintentar
+        </Button>
+      </div>
+    );
+  }
+
   if (!folder) {
     return (
       <div className="space-y-4">
@@ -116,6 +178,112 @@ export default function ProfesorCarpetaDetallePage() {
   }
 
   const isResources = folder.kind === "TEACHER_RESOURCES";
+  const isSubmissions = folder.kind === "STUDENT_SUBMISSIONS";
+
+  // —— Student detail view (submissions) ——
+  if (isSubmissions && selectedEntry) {
+    const isNoEnviado = selectedEntry.status === "NO_ENVIADO";
+    const studentMaterials = selectedEntry.materials || [];
+
+    return (
+      <div className="space-y-6">
+        <div>
+          <button
+            type="button"
+            onClick={backToRoster}
+            className="text-sm text-blue-600 hover:underline"
+          >
+            ← Volver al listado
+          </button>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">{folder.name}</h1>
+            <Badge variant={folder.status === "abierta" ? "success" : "outline"}>
+              {folder.status === "abierta"
+                ? "Abierta"
+                : folder.status === "proxima"
+                  ? "Próxima"
+                  : "Cerrada"}
+            </Badge>
+          </div>
+          <p className="text-sm text-gray-500">
+            {folder.subject.name} · {folder.group.grade.name} {folder.group.name}
+            {folder.closesAt
+              ? ` · Plazo hasta ${new Date(folder.closesAt).toLocaleString("es-PA")}`
+              : ""}
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <Button size="sm" variant="outline" onClick={goPrev} disabled={roster.length < 2}>
+            ← Anterior
+          </Button>
+          <p className="text-sm text-gray-500">
+            Alumno {selectedIndex + 1} de {roster.length}
+          </p>
+          <Button size="sm" variant="outline" onClick={goNext} disabled={roster.length < 2}>
+            Siguiente →
+          </Button>
+        </div>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base">{selectedEntry.student.fullName}</CardTitle>
+              {selectedEntry.student.email && (
+                <p className="text-sm text-gray-500">{selectedEntry.student.email}</p>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              {isNoEnviado ? (
+                <Badge variant="secondary">No enviado</Badge>
+              ) : (
+                <Badge variant="default">Enviado</Badge>
+              )}
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {isNoEnviado ? (
+              <p className="text-sm text-gray-600">
+                Este alumno aún no ha entregado.
+              </p>
+            ) : (
+              studentMaterials.map((m) => (
+                <div
+                  key={m.id}
+                  className="flex items-center justify-between gap-3 rounded border border-gray-100 p-3 text-sm"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-gray-900">{m.title}</p>
+                    <p className="truncate text-gray-500">
+                      {m.fileName}
+                      {m.fileSize != null ? ` · ${formatBytes(m.fileSize)}` : ""}
+                      {" · "}
+                      {new Date(m.createdAt).toLocaleString("es-PA")}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 gap-1">
+                    {m.fileUrl && (
+                      <a href={m.fileUrl} target="_blank" rel="noreferrer">
+                        <Button variant="ghost" size="icon">
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </a>
+                    )}
+                    <Button variant="ghost" size="icon" onClick={() => remove(m.id)}>
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const enviadoCount = roster.filter((r) => r.status === "ENVIADO").length;
+  const noEnviadoCount = roster.length - enviadoCount;
 
   return (
     <div className="space-y-6">
@@ -181,42 +349,91 @@ export default function ProfesorCarpetaDetallePage() {
         </Card>
       )}
 
-      <div className="space-y-3">
-        <h2 className="text-lg font-semibold text-gray-900">
-          {isResources ? "Archivos" : "Entregas de alumnos"}
-        </h2>
-        {folder.materials.map((m) => (
-          <Card key={m.id}>
-            <CardContent className="flex items-center justify-between py-4">
-              <div>
-                <p className="font-medium text-gray-900">{m.title}</p>
-                <p className="text-sm text-gray-500">
-                  {m.uploadedBy.fullName} · {m.fileName}
-                  {m.fileSize ? ` · ${formatBytes(m.fileSize)}` : ""} ·{" "}
-                  {new Date(m.createdAt).toLocaleString("es-PA")}
-                </p>
-              </div>
-              <div className="flex gap-1">
-                {m.fileUrl && (
-                  <a href={m.fileUrl} target="_blank" rel="noreferrer">
-                    <Button variant="ghost" size="icon">
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  </a>
-                )}
-                <Button variant="ghost" size="icon" onClick={() => remove(m.id)}>
-                  <Trash2 className="h-4 w-4 text-red-500" />
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-        {folder.materials.length === 0 && (
-          <p className="text-sm text-gray-500">
-            {isResources ? "No hay archivos en esta carpeta." : "Aún no hay entregas."}
-          </p>
-        )}
-      </div>
+      {isResources && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-gray-900">Archivos</h2>
+          {folder.materials.map((m) => (
+            <Card key={m.id}>
+              <CardContent className="flex items-center justify-between py-4">
+                <div>
+                  <p className="font-medium text-gray-900">{m.title}</p>
+                  <p className="text-sm text-gray-500">
+                    {m.uploadedBy.fullName} · {m.fileName}
+                    {m.fileSize ? ` · ${formatBytes(m.fileSize)}` : ""} ·{" "}
+                    {new Date(m.createdAt).toLocaleString("es-PA")}
+                  </p>
+                </div>
+                <div className="flex gap-1">
+                  {m.fileUrl && (
+                    <a href={m.fileUrl} target="_blank" rel="noreferrer">
+                      <Button variant="ghost" size="icon">
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </a>
+                  )}
+                  <Button variant="ghost" size="icon" onClick={() => remove(m.id)}>
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          {folder.materials.length === 0 && (
+            <p className="text-sm text-gray-500">No hay archivos en esta carpeta.</p>
+          )}
+        </div>
+      )}
+
+      {isSubmissions && (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="text-lg font-semibold">Alumnos del grupo</h2>
+            <p className="text-sm text-gray-500">
+              {enviadoCount} enviado{enviadoCount === 1 ? "" : "s"} · {noEnviadoCount} no
+              enviado{noEnviadoCount === 1 ? "" : "s"}
+            </p>
+          </div>
+
+          {roster.length === 0 && (
+            <p className="text-sm text-gray-500">
+              No hay alumnos asignados a este grupo. Matricula alumnos en el grupo de la
+              asignatura.
+            </p>
+          )}
+
+          <div className="divide-y divide-gray-100 overflow-hidden rounded-lg border border-gray-200 bg-white">
+            {roster.map((entry) => {
+              const enviado = entry.status === "ENVIADO";
+              return (
+                <button
+                  key={entry.student.id}
+                  type="button"
+                  onClick={() => openStudent(entry.student.id)}
+                  className={`flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-blue-50 ${
+                    !enviado ? "opacity-80" : ""
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium text-gray-900">
+                      {entry.student.fullName}
+                    </p>
+                    {entry.student.email && (
+                      <p className="truncate text-sm text-gray-500">{entry.student.email}</p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+                    {enviado ? (
+                      <Badge variant="default">Enviado</Badge>
+                    ) : (
+                      <Badge variant="secondary">No enviado</Badge>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

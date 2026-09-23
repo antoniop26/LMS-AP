@@ -56,12 +56,73 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
-  // Students only see teacher files in TEACHER_RESOURCES; in submissions they see all (or own?)
-  // Product: teacher sees student uploads; students upload. For student view of submission folder,
-  // showing all submissions in group is common for teachers only — students typically see own.
+  // Students only see their own uploads in STUDENT_SUBMISSIONS folders.
   let materials = folder.materials;
   if (user.role === "ALUMNO" && folder.kind === "STUDENT_SUBMISSIONS") {
     materials = materials.filter((m) => m.uploadedById === user.id);
+  }
+
+  const isTeacherOrAdmin = user.role === "PROFESOR" || user.role === "ADMINISTRADOR";
+
+  // Teacher/admin roster for submission folders (mirror exam roster).
+  if (isTeacherOrAdmin && folder.kind === "STUDENT_SUBMISSIONS") {
+    const memberships = await prisma.studentGroup.findMany({
+      where: {
+        groupId: folder.groupId,
+        student: { role: "ALUMNO", schoolId: user.schoolId },
+      },
+      include: {
+        student: { select: { id: true, fullName: true, email: true } },
+      },
+    });
+
+    const studentMap = new Map<string, { id: string; fullName: string; email: string }>();
+    for (const m of memberships) {
+      if (!studentMap.has(m.student.id)) {
+        studentMap.set(m.student.id, m.student);
+      }
+    }
+
+    const materialsByStudent = new Map<string, typeof materials>();
+    for (const mat of materials) {
+      const uploaderId = mat.uploadedById;
+      const uploaderRole = mat.uploadedBy?.role;
+      // Count uploads from students (or anyone in the group roster)
+      if (uploaderRole === "ALUMNO" || studentMap.has(uploaderId)) {
+        const list = materialsByStudent.get(uploaderId) ?? [];
+        list.push(mat);
+        materialsByStudent.set(uploaderId, list);
+      }
+    }
+
+    const roster = Array.from(studentMap.values())
+      .map((student) => {
+        const studentMaterials = materialsByStudent.get(student.id) ?? [];
+        // materials already ordered by createdAt desc from folderInclude
+        const status = (studentMaterials.length > 0 ? "ENVIADO" : "NO_ENVIADO") as
+          | "ENVIADO"
+          | "NO_ENVIADO";
+        return {
+          student,
+          status,
+          materials: studentMaterials,
+        };
+      })
+      .sort((a, b) => {
+        if (a.status !== b.status) {
+          return a.status === "ENVIADO" ? -1 : 1;
+        }
+        return a.student.fullName.localeCompare(b.student.fullName, "es", {
+          sensitivity: "base",
+        });
+      });
+
+    return NextResponse.json({
+      ...folder,
+      materials,
+      roster,
+      status: getFolderStatus(folder),
+    });
   }
 
   return NextResponse.json({
