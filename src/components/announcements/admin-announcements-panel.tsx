@@ -18,7 +18,7 @@ import {
   AnnouncementsFeed,
   type AnnouncementItem,
 } from "@/components/announcements/announcements-feed";
-import { Trash2 } from "lucide-react";
+import { ImageIcon, Trash2 } from "lucide-react";
 
 type Kind = "MESSAGE" | "FLYER" | "LINK";
 
@@ -192,23 +192,45 @@ export function AdminAnnouncementsPanel() {
             )}
 
             {kind === "FLYER" && (
-              <div className="space-y-2">
-                <Label htmlFor="ann-file">Archivo (imagen o PDF)</Label>
+              <div className="mx-auto w-full max-w-lg space-y-3 rounded-xl border border-dashed border-blue-300 bg-blue-50/50 px-6 py-8 text-center">
+                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-white shadow-sm">
+                  <ImageIcon className="h-6 w-6 text-blue-600" />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="ann-file" className="text-base text-gray-900">
+                    Publicar flyer
+                  </Label>
+                  <p className="text-sm text-gray-500">
+                    Suba una imagen o PDF. Se mostrará centrado para profesores y alumnos.
+                  </p>
+                </div>
                 <Input
                   id="ann-file"
                   type="file"
                   accept="image/*,.pdf,application/pdf"
                   onChange={(e) => setFile(e.target.files?.[0] || null)}
                   required
+                  className="mx-auto max-w-sm cursor-pointer bg-white"
                 />
+                {file && (
+                  <p className="truncate text-sm font-medium text-blue-800">
+                    Archivo seleccionado: {file.name}
+                  </p>
+                )}
               </div>
             )}
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && (
+              <p className={`text-sm text-red-600 ${kind === "FLYER" ? "text-center" : ""}`}>
+                {error}
+              </p>
+            )}
 
-            <Button type="submit" disabled={loading}>
-              {loading ? "Publicando…" : "Publicar comunicado"}
-            </Button>
+            <div className={kind === "FLYER" ? "flex justify-center" : ""}>
+              <Button type="submit" disabled={loading}>
+                {loading ? "Publicando…" : "Publicar comunicado"}
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>

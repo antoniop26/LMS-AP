@@ -99,18 +99,37 @@ export function AnnouncementsFeed({
         {items.map((a) => (
           <article
             key={a.id}
-            className="rounded-lg border border-gray-200 bg-gray-50/60 p-4"
+            className={
+              a.kind === "FLYER"
+                ? "rounded-xl border border-blue-100 bg-gradient-to-b from-blue-50/80 to-white p-5 shadow-sm"
+                : "rounded-lg border border-gray-200 bg-gray-50/60 p-4"
+            }
           >
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <Badge variant="secondary" className="bg-blue-50 text-blue-700">
-                {KIND_LABEL[a.kind]}
-              </Badge>
-              <h3 className="text-base font-semibold text-gray-900">{a.title}</h3>
-            </div>
-            <p className="mb-2 text-xs text-gray-500">
-              {formatDate(a.createdAt)}
-              {a.createdBy ? ` · ${a.createdBy.fullName}` : ""}
-            </p>
+            {a.kind === "FLYER" ? (
+              <div className="mb-3 flex flex-col items-center gap-2 text-center">
+                <Badge variant="secondary" className="bg-blue-50 text-blue-700">
+                  {KIND_LABEL[a.kind]}
+                </Badge>
+                <h3 className="text-base font-semibold text-gray-900">{a.title}</h3>
+                <p className="text-xs text-gray-500">
+                  {formatDate(a.createdAt)}
+                  {a.createdBy ? ` · ${a.createdBy.fullName}` : ""}
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <Badge variant="secondary" className="bg-blue-50 text-blue-700">
+                    {KIND_LABEL[a.kind]}
+                  </Badge>
+                  <h3 className="text-base font-semibold text-gray-900">{a.title}</h3>
+                </div>
+                <p className="mb-2 text-xs text-gray-500">
+                  {formatDate(a.createdAt)}
+                  {a.createdBy ? ` · ${a.createdBy.fullName}` : ""}
+                </p>
+              </>
+            )}
 
             {a.kind === "MESSAGE" && a.body && (
               <p className="whitespace-pre-wrap text-sm text-gray-700">{a.body}</p>
@@ -133,15 +152,24 @@ export function AnnouncementsFeed({
             )}
 
             {a.kind === "FLYER" && (
-              <div className="space-y-2">
-                {a.body && <p className="whitespace-pre-wrap text-sm text-gray-700">{a.body}</p>}
+              <div className="mx-auto flex w-full max-w-lg flex-col items-center gap-3">
+                {a.body && (
+                  <p className="w-full whitespace-pre-wrap text-center text-sm text-gray-700">
+                    {a.body}
+                  </p>
+                )}
                 {a.fileUrl && isImageMime(a.mimeType, a.fileName) ? (
-                  <a href={a.fileUrl} target="_blank" rel="noopener noreferrer" className="block">
+                  <a
+                    href={a.fileUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full"
+                  >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={a.fileUrl}
                       alt={a.title}
-                      className="max-h-72 w-full max-w-md rounded-md border border-gray-200 object-contain bg-white"
+                      className="mx-auto max-h-[28rem] w-full rounded-lg border border-gray-200 bg-white object-contain shadow-sm"
                     />
                   </a>
                 ) : a.fileUrl ? (
@@ -149,9 +177,9 @@ export function AnnouncementsFeed({
                     href={a.fileUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 text-sm font-medium text-blue-600 hover:underline"
+                    className="inline-flex items-center gap-2 rounded-lg border border-blue-200 bg-white px-4 py-3 text-sm font-medium text-blue-700 shadow-sm hover:bg-blue-50"
                   >
-                    <FileText className="h-4 w-4" />
+                    <FileText className="h-5 w-5" />
                     {a.fileName || "Abrir PDF"}
                     <ExternalLink className="h-3.5 w-3.5" />
                   </a>
