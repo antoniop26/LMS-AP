@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FilePicker } from "@/components/ui/file-picker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -204,19 +205,16 @@ export function AdminAnnouncementsPanel() {
                     Suba una imagen o PDF. Se mostrará centrado para profesores y alumnos.
                   </p>
                 </div>
-                <Input
+                <FilePicker
                   id="ann-file"
-                  type="file"
                   accept="image/*,.pdf,application/pdf"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  value={file}
+                  onFileChange={setFile}
                   required
-                  className="mx-auto max-w-sm cursor-pointer bg-white"
+                  disabled={loading}
+                  className="mx-auto max-w-sm text-left"
+                  buttonLabel="Seleccionar flyer"
                 />
-                {file && (
-                  <p className="truncate text-sm font-medium text-blue-800">
-                    Archivo seleccionado: {file.name}
-                  </p>
-                )}
               </div>
             )}
 

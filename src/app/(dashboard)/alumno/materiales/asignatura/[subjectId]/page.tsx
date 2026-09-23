@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FilePicker } from "@/components/ui/file-picker";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -265,12 +266,14 @@ export default function AlumnoMaterialesAsignaturaPage() {
                     <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
                   </div>
                   <div className="space-y-1">
-                    <Label>Archivo</Label>
-                    <Input
-                      type="file"
-                      accept=".pdf,.doc,.docx,.ppt,.pptx,.png,.jpg,.jpeg,.gif,.webp,.txt"
-                      onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    <Label htmlFor="entrega-archivo">Archivo</Label>
+                    <FilePicker
+                      id="entrega-archivo"
+                      accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.txt"
+                      value={file}
+                      onFileChange={setFile}
                       required
+                      disabled={loading}
                     />
                   </div>
                   {error && <p className="text-sm text-red-600">{error}</p>}

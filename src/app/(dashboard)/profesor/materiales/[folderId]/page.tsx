@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FilePicker } from "@/components/ui/file-picker";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -160,12 +161,14 @@ export default function ProfesorCarpetaDetallePage() {
                 <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
               </div>
               <div className="space-y-1">
-                <Label>Archivo</Label>
-                <Input
-                  type="file"
+                <Label htmlFor="profesor-archivo">Archivo</Label>
+                <FilePicker
+                  id="profesor-archivo"
                   accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.png,.jpg,.jpeg,.gif,.webp,.txt"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  value={file}
+                  onFileChange={setFile}
                   required
+                  disabled={loading}
                 />
               </div>
               {error && <p className="text-sm text-red-600">{error}</p>}
