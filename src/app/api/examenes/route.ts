@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
       },
       include: {
         subject: true,
-        group: true,
+        group: { include: { grade: true } },
         _count: { select: { questions: true } },
         attempts: { where: { studentId: user.id } },
       },
@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     },
     include: {
       subject: true,
-      group: true,
+      group: { include: { grade: true } },
       _count: { select: { questions: true, attempts: true } },
     },
     orderBy: { createdAt: "desc" },

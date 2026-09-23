@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { examWindowStatus } from "@/lib/exam-window";
 
 type Q = {
   prompt: string;
@@ -24,14 +25,6 @@ function toLocalInput(iso: string | null | undefined) {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function formatWindow(opensAt?: string | null, closesAt?: string | null) {
-  if (!opensAt && !closesAt) return "Sin límite de tiempo";
-  const parts: string[] = [];
-  if (opensAt) parts.push(`Abre ${new Date(opensAt).toLocaleString("es-PA")}`);
-  if (closesAt) parts.push(`Cierra ${new Date(closesAt).toLocaleString("es-PA")}`);
-  return parts.join(" · ");
 }
 
 export default function ProfesorExamenesPage() {
@@ -66,6 +59,45 @@ export default function ProfesorExamenesPage() {
     setGroups(await g.json());
   }
   useEffect(() => { load(); }, []);
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, { subject: any; group: any | null; tests: any[] }>();
+    for (const t of tests) {
+      if (!t || !t.subject) continue;
+      const key = `${t.subjectId}:${t.groupId || "all"}`;
+      if (!map.has(key)) {
+        map.set(key, { subject: t.subject, group: t.group || null, tests: [] });
+      }
+      map.get(key)!.tests.push(t);
+    }
+    return Array.from(map.values()).sort((a, b) => {
+      const an = `${a.subject?.name || ""} ${a.group?.grade?.name || ""} ${a.group?.name || ""}`;
+      const bn = `${b.subject?.name || ""} ${b.group?.grade?.name || ""} ${b.group?.name || ""}`;
+      return an.localeCompare(bn, "es");
+    });
+  }, [tests]);
+
+  function groupHeading(block: { subject: any; group: any | null }) {
+    if (block.group) {
+      return `${block.subject.name} · ${block.group.grade.name} ${block.group.name}`;
+    }
+    return `${block.subject.name} · Todos los grupos`;
+  }
+
+  function windowBadge(t: any) {
+    if (!t.published) return <Badge variant="secondary">Borrador</Badge>;
+    const window = examWindowStatus(t.opensAt, t.closesAt);
+    if (!window.open && window.reason === "not_open") {
+      return <Badge variant="outline">Próxima</Badge>;
+    }
+    if (!window.open && window.reason === "closed") {
+      return <Badge variant="secondary">Cerrada</Badge>;
+    }
+    if (!t.opensAt && !t.closesAt) {
+      return <Badge variant="secondary">Sin plazo</Badge>;
+    }
+    return <Badge variant="success">Abierta</Badge>;
+  }
 
   function updateQ(i: number, patch: Partial<Q>) {
     setQuestions((prev) => prev.map((q, idx) => (idx === i ? { ...q, ...patch } : q)));
@@ -258,56 +290,78 @@ export default function ProfesorExamenesPage() {
         </Card>
       )}
 
-      <div className="grid gap-3">
-        {tests.map((t) => (
-          <Card key={t.id}>
-            <CardContent className="space-y-3 py-4">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-medium text-gray-900">{t.title}</p>
-                    <Badge variant={t.published ? "success" : "secondary"}>{t.published ? "Publicado" : "Borrador"}</Badge>
-                  </div>
-                  <p className="text-sm text-gray-500">
-                    {t.subject?.name} · {t._count?.questions || 0} preguntas · {t._count?.attempts || 0} intentos
-                  </p>
-                  <p className="text-sm text-gray-500">{formatWindow(t.opensAt, t.closesAt)}</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Link href={`/profesor/examenes/${t.id}`}>
-                    <Button variant="outline" size="sm">Ver / Calificar</Button>
-                  </Link>
-                  <Button variant="outline" size="sm" onClick={() => (editingId === t.id ? setEditingId(null) : startEditWindow(t))}>
-                    {editingId === t.id ? "Cancelar plazos" : "Editar plazos"}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => togglePublish(t.id, t.published)}>
-                    {t.published ? "Ocultar" : "Publicar"}
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => remove(t.id)}>
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </Button>
-                </div>
-              </div>
-              {editingId === t.id && (
-                <div className="grid gap-3 rounded-md border border-dashed border-gray-200 p-3 sm:grid-cols-2">
-                  <div className="space-y-1">
-                    <Label>Disponible desde</Label>
-                    <Input type="datetime-local" value={editOpensAt} onChange={(e) => setEditOpensAt(e.target.value)} />
-                  </div>
-                  <div className="space-y-1">
-                    <Label>Disponible hasta</Label>
-                    <Input type="datetime-local" value={editClosesAt} onChange={(e) => setEditClosesAt(e.target.value)} />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <Button size="sm" disabled={savingWindow} onClick={() => saveWindow(t.id)}>
-                      {savingWindow ? "Guardando…" : "Guardar plazos"}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+      <div className="space-y-6">
+        {grouped.map((block) => (
+          <div key={`${block.subject.id}:${block.group?.id || "all"}`} className="space-y-3">
+            <h2 className="text-lg font-semibold text-blue-800">
+              {groupHeading(block)}
+            </h2>
+            <div className="grid gap-3">
+              {block.tests.map((t) => (
+                <Card key={t.id}>
+                  <CardContent className="space-y-3 py-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="font-medium text-gray-900">{t.title}</p>
+                          {windowBadge(t)}
+                        </div>
+                        <p className="text-sm text-gray-500">
+                          {t._count?.questions || 0} pregunta{(t._count?.questions || 0) === 1 ? "" : "s"}
+                          {" · "}
+                          {t._count?.attempts || 0} intento{(t._count?.attempts || 0) === 1 ? "" : "s"}
+                          {t.opensAt
+                            ? ` · Abre ${new Date(t.opensAt).toLocaleString("es-PA")}`
+                            : ""}
+                          {t.closesAt
+                            ? ` · Cierra ${new Date(t.closesAt).toLocaleString("es-PA")}`
+                            : ""}
+                        </p>
+                        {t.description && (
+                          <p className="mt-1 text-sm text-gray-600">{t.description}</p>
+                        )}
+                      </div>
+                      <div className="flex shrink-0 flex-wrap gap-2">
+                        <Link href={`/profesor/examenes/${t.id}`}>
+                          <Button variant="outline" size="sm">Ver / Calificar</Button>
+                        </Link>
+                        <Button variant="outline" size="sm" onClick={() => (editingId === t.id ? setEditingId(null) : startEditWindow(t))}>
+                          {editingId === t.id ? "Cancelar plazos" : "Editar plazos"}
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => togglePublish(t.id, t.published)}>
+                          {t.published ? "Ocultar" : "Publicar"}
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => remove(t.id)}>
+                          <Trash2 className="h-4 w-4 text-red-500" />
+                        </Button>
+                      </div>
+                    </div>
+                    {editingId === t.id && (
+                      <div className="grid gap-3 rounded-md border border-dashed border-gray-200 p-3 sm:grid-cols-2">
+                        <div className="space-y-1">
+                          <Label>Disponible desde</Label>
+                          <Input type="datetime-local" value={editOpensAt} onChange={(e) => setEditOpensAt(e.target.value)} />
+                        </div>
+                        <div className="space-y-1">
+                          <Label>Disponible hasta</Label>
+                          <Input type="datetime-local" value={editClosesAt} onChange={(e) => setEditClosesAt(e.target.value)} />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <Button size="sm" disabled={savingWindow} onClick={() => saveWindow(t.id)}>
+                            {savingWindow ? "Guardando…" : "Guardar plazos"}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
         ))}
+        {tests.length === 0 && (
+          <p className="text-sm text-gray-500">Aún no hay exámenes. Cree uno para asignarlo a una asignatura y grupo.</p>
+        )}
       </div>
     </div>
   );
