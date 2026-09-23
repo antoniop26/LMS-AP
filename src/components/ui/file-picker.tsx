@@ -1,9 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Button } from "@/components/ui/button";
-import { formatBytes } from "@/lib/utils";
-import { cn } from "@/lib/utils";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { formatBytes, cn } from "@/lib/utils";
 import { FileIcon, X } from "lucide-react";
 
 export type FilePickerProps = {
@@ -56,29 +55,32 @@ export function FilePicker({
 
   return (
     <div className={cn("space-y-2", className)}>
-      <input
-        ref={inputRef}
-        id={inputId}
-        type="file"
-        accept={accept}
-        required={required && !value}
-        disabled={disabled}
-        className="sr-only"
-        onChange={handleChange}
-        tabIndex={-1}
-        aria-hidden={false}
-      />
       <div className="flex flex-wrap items-center gap-2">
-        <Button
-          type="button"
-          variant="outline"
-          disabled={disabled}
-          onClick={() => inputRef.current?.click()}
-          aria-controls={inputId}
+        {/*
+          Native <label> + opacity-0 input overlay (non-zero size).
+          Avoids sr-only/clip + programmatic click, which many browsers block.
+        */}
+        <label
+          htmlFor={inputId}
+          className={cn(
+            buttonVariants({ variant: "outline" }),
+            "relative cursor-pointer",
+            disabled && "pointer-events-none opacity-50"
+          )}
         >
-          <FileIcon className="mr-2 h-4 w-4" />
+          <input
+            ref={inputRef}
+            id={inputId}
+            type="file"
+            accept={accept}
+            required={required && !value}
+            disabled={disabled}
+            className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            onChange={handleChange}
+          />
+          <FileIcon className="mr-2 h-4 w-4" aria-hidden />
           {buttonLabel}
-        </Button>
+        </label>
         {value && (
           <Button
             type="button"
