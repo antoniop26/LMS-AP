@@ -63,8 +63,8 @@ export function Sidebar({
   }
 
   return (
-    <aside className="flex h-full w-64 flex-col border-r border-gray-200 bg-white">
-      <div className="flex items-center gap-2 border-b border-gray-200 px-5 py-4">
+    <aside className="flex h-full w-64 flex-col border-r border-slate-800 bg-slate-900">
+      <div className="flex items-center gap-2 border-b border-slate-800 px-5 py-4">
         <Image
           src="/logo-tigers-icon.png"
           alt="Tigers LMS"
@@ -73,8 +73,8 @@ export function Sidebar({
           className="h-10 w-auto object-contain shrink-0"
         />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-gray-900">{schoolName}</p>
-          <p className="text-xs text-gray-500">Tigers LMS</p>
+          <p className="truncate text-sm font-semibold text-white">{schoolName}</p>
+          <p className="text-xs text-slate-400">Tigers LMS</p>
         </div>
       </div>
 
@@ -89,20 +89,27 @@ export function Sidebar({
               href={item.href}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                isActive ? "bg-blue-50 text-blue-700" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                isActive
+                  ? "bg-blue-600 text-white shadow-sm"
+                  : "text-slate-300 hover:bg-slate-800 hover:text-white"
               )}
             >
-              <Icon className="h-4 w-4" />
+              <Icon className="h-4 w-4 shrink-0" />
               {item.label}
             </Link>
           );
         })}
       </nav>
 
-      <div className="border-t border-gray-200 p-4">
-        <p className="truncate text-sm font-medium text-gray-900">{fullName}</p>
-        <p className="mb-3 text-xs text-gray-500">{ROLE_LABELS[role] || role}</p>
-        <Button variant="outline" size="sm" className="w-full" onClick={logout}>
+      <div className="border-t border-slate-800 p-4">
+        <p className="truncate text-sm font-medium text-white">{fullName}</p>
+        <p className="mb-3 text-xs text-slate-400">{ROLE_LABELS[role] || role}</p>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full border-slate-600 bg-transparent text-slate-200 hover:bg-slate-800 hover:text-white"
+          onClick={logout}
+        >
           <LogOut className="mr-2 h-4 w-4" />
           Cerrar sesión
         </Button>
