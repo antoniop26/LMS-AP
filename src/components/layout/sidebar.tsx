@@ -13,6 +13,7 @@ import {
   Award,
   LogOut,
   UserPlus,
+  X,
 } from "lucide-react";
 import { cn, ROLE_LABELS } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/client";
@@ -46,10 +47,14 @@ export function Sidebar({
   role,
   fullName,
   schoolName,
+  onNavigate,
+  onClose,
 }: {
   role: string;
   fullName: string;
   schoolName: string;
+  onNavigate?: () => void;
+  onClose?: () => void;
 }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -72,21 +77,34 @@ export function Sidebar({
           height={34}
           className="h-10 w-auto object-contain shrink-0"
         />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-white">{schoolName}</p>
           <p className="text-xs text-slate-400">Tigers LMS</p>
         </div>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="shrink-0 rounded-lg p-1.5 text-slate-400 hover:bg-slate-800 hover:text-white md:hidden"
+            aria-label="Cerrar menú"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        )}
       </div>
 
-      <nav className="flex-1 space-y-1 p-3">
+      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
         {items.map((item) => {
           const isRoot = item.href.match(/^\/(admin|profesor|alumno)$/);
-          const isActive = isRoot ? pathname === item.href : pathname === item.href || pathname.startsWith(item.href + "/");
+          const isActive = isRoot
+            ? pathname === item.href
+            : pathname === item.href || pathname.startsWith(item.href + "/");
           const Icon = item.icon;
           return (
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
                 isActive
