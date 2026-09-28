@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { getFolderStatus } from "@/lib/material-folders";
+import { withMaterialUrl } from "@/lib/security/authz";
 
 const folderInclude = {
   subject: true,
@@ -57,7 +58,7 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   }
 
   // Students only see their own uploads in STUDENT_SUBMISSIONS folders.
-  let materials = folder.materials;
+  let materials = folder.materials.map(withMaterialUrl);
   if (user.role === "ALUMNO" && folder.kind === "STUDENT_SUBMISSIONS") {
     materials = materials.filter((m) => m.uploadedById === user.id);
   }
@@ -189,7 +190,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     include: folderInclude,
   });
 
-  return NextResponse.json({ ...updated, status: getFolderStatus(updated) });
+  return NextResponse.json({
+    ...updated,
+    materials: updated.materials.map(withMaterialUrl),
+    status: getFolderStatus(updated),
+  });
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {

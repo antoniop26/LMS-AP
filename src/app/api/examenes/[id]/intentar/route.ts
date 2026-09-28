@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { examWindowMessage, examWindowStatus } from "@/lib/exam-window";
+import { studentCanSeeTest } from "@/lib/security/authz";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getSessionUser();
@@ -11,9 +12,12 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const test = await prisma.test.findUnique({
     where: { id: params.id },
-    include: { questions: { include: { options: true } } },
+    include: {
+      subject: { select: { schoolId: true } },
+      questions: { include: { options: true } },
+    },
   });
-  if (!test || !test.published) {
+  if (!test || !(await studentCanSeeTest(user, test))) {
     return NextResponse.json({ error: "Examen no disponible" }, { status: 404 });
   }
 

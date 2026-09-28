@@ -2,11 +2,20 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { Role } from "@prisma/client";
+import { generateTempPassword, validatePassword } from "@/lib/security/password";
+import { createAdminClient } from "@/lib/security/supabase-admin";
+
+const ROLES: Role[] = ["ADMINISTRADOR", "PROFESOR", "ALUMNO"];
 
 export async function GET(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "No autenticado" }, { status: 401 });
-  const role = req.nextUrl.searchParams.get("role") as Role | null;
+  // Alumnos no pueden listar usuarios (evita enumerar correos de compañeros).
+  if (user.role === "ALUMNO") {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+  const roleParam = req.nextUrl.searchParams.get("role");
+  const role = roleParam && ROLES.includes(roleParam as Role) ? (roleParam as Role) : null;
   const users = await prisma.user.findMany({
     where: {
       schoolId: user.schoolId,
@@ -27,18 +36,18 @@ export async function POST(req: NextRequest) {
   const email = String(body.email || "").trim().toLowerCase();
   const fullName = String(body.fullName || "").trim();
   const role = body.role as Role;
-  const password = String(body.password || "demo1234");
+  // Si no se envía contraseña, se genera una temporal fuerte.
+  const provided = typeof body.password === "string" ? body.password.trim() : "";
+  const generated = !provided;
+  const password = provided || generateTempPassword();
 
-  if (!email || !fullName || !role) {
+  if (!email || !fullName || !ROLES.includes(role)) {
     return NextResponse.json({ error: "Datos incompletos" }, { status: 400 });
   }
+  const pwError = validatePassword(password);
+  if (pwError) return NextResponse.json({ error: pwError }, { status: 400 });
 
-  const { createClient } = await import("@supabase/supabase-js");
-  const admin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
+  const admin = createAdminClient();
 
   const { data: authData, error: authError } = await admin.auth.admin.createUser({
     email,
@@ -61,5 +70,8 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json(dbUser, { status: 201 });
+  return NextResponse.json(
+    { ...dbUser, ...(generated ? { temporaryPassword: password } : {}) },
+    { status: 201 }
+  );
 }

@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { randomBytes } from "crypto";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
-
-function generateTempPassword() {
-  // Readable temporary password for oral/written handoff (no ambiguous chars)
-  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789";
-  const bytes = randomBytes(10);
-  let out = "Tigres-";
-  for (let i = 0; i < 10; i++) out += alphabet[bytes[i] % alphabet.length];
-  return out;
-}
+import { generateTempPassword } from "@/lib/security/password";
+import { createAdminClient } from "@/lib/security/supabase-admin";
 
 export async function POST(
   _req: NextRequest,
@@ -37,12 +29,7 @@ export async function POST(
 
   const temporaryPassword = generateTempPassword();
 
-  const { createClient } = await import("@supabase/supabase-js");
-  const admin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
+  const admin = createAdminClient();
 
   const { error } = await admin.auth.admin.updateUserById(target.supabaseId, {
     password: temporaryPassword,

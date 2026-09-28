@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
+import { staffCanManageTest, studentCanSeeTest } from "@/lib/security/authz";
 
 const attemptIncludeForTeacher = {
   student: { select: { id: true, fullName: true, email: true } },
@@ -50,16 +51,31 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       subject: true,
       group: { include: { grade: true } },
       questions: {
-        include: {
-          options: {
+        // Alumno: nunca recibe la respuesta correcta (correctText / isCorrect).
+        ...(user.role === "ALUMNO"
+          ? {
+              select: {
+                id: true,
+                testId: true,
+                prompt: true,
+                type: true,
+                points: true,
+                order: true,
+                options: { select: { id: true, text: true, order: true }, orderBy: { order: "asc" as const } },
+              },
+            }
+          : {
+              include: {
+                options: {
             select: {
               id: true,
               text: true,
               order: true,
-              isCorrect: user.role !== "ALUMNO",
-            },
-          },
-        },
+                    isCorrect: true,
+                  },
+                },
+              },
+            }),
         orderBy: { order: "asc" },
       },
       attempts:
@@ -76,11 +92,15 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   if (!test) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
 
   if (!isTeacherOrAdmin) {
+    // Alumno: solo exámenes publicados de su colegio y grupo; 404 para no revelar existencia.
+    if (!(await studentCanSeeTest(user, test))) {
+      return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+    }
     return NextResponse.json(test);
   }
 
-  // Authorize: owner teacher or admin
-  if (user.role === "PROFESOR" && test.creatorId !== user.id) {
+  // Authorize: owner teacher or admin of the same school
+  if (!staffCanManageTest(user, test)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
 
@@ -181,6 +201,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (!user || (user.role !== "PROFESOR" && user.role !== "ADMINISTRADOR")) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
+  const existing = await prisma.test.findUnique({
+    where: { id: params.id },
+    include: { subject: { select: { schoolId: true } } },
+  });
+  if (!existing) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  if (!staffCanManageTest(user, existing)) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+
   const body = await req.json();
   const data: {
     published?: boolean;
@@ -216,6 +245,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getSessionUser();
   if (!user || (user.role !== "PROFESOR" && user.role !== "ADMINISTRADOR")) {
+    return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+  const existing = await prisma.test.findUnique({
+    where: { id: params.id },
+    include: { subject: { select: { schoolId: true } } },
+  });
+  if (!existing) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+  if (!staffCanManageTest(user, existing)) {
     return NextResponse.json({ error: "No autorizado" }, { status: 403 });
   }
   await prisma.test.delete({ where: { id: params.id } });

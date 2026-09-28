@@ -70,6 +70,27 @@ export async function POST(req: NextRequest) {
   if (!title || !subjectId) {
     return NextResponse.json({ error: "Datos incompletos" }, { status: 400 });
   }
+  const subject = await prisma.subject.findFirst({
+    where: { id: subjectId, schoolId: user.schoolId },
+    select: { id: true },
+  });
+  if (!subject) return NextResponse.json({ error: "Asignatura no encontrada" }, { status: 404 });
+  if (groupId) {
+    const group = await prisma.group.findFirst({
+      where: { id: String(groupId), grade: { schoolId: user.schoolId } },
+      select: { id: true },
+    });
+    if (!group) return NextResponse.json({ error: "Grupo no encontrado" }, { status: 404 });
+  }
+  if (user.role === "PROFESOR") {
+    const teaches = await prisma.teacherSubject.findFirst({
+      where: { teacherId: user.id, subjectId },
+      select: { id: true },
+    });
+    if (!teaches) {
+      return NextResponse.json({ error: "No tiene asignada esa asignatura" }, { status: 403 });
+    }
+  }
   if (opensAt && closesAt && opensAt >= closesAt) {
     return NextResponse.json(
       { error: "La fecha de inicio debe ser anterior a la de finalización" },

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
+import { createAdminClient } from "@/lib/security/supabase-admin";
 
 export async function DELETE(
   _req: NextRequest,
@@ -27,12 +28,7 @@ export async function DELETE(
   }
 
   if (!target.supabaseId.startsWith("local-")) {
-    const { createClient } = await import("@supabase/supabase-js");
-    const admin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { autoRefreshToken: false, persistSession: false } }
-    );
+    const admin = createAdminClient();
     const { error } = await admin.auth.admin.deleteUser(target.supabaseId);
     if (error) {
       return NextResponse.json(

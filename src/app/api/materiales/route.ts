@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { isSubmissionWindowOpen } from "@/lib/material-folders";
+import { withMaterialUrl } from "@/lib/security/authz";
 
 export async function GET(req: NextRequest) {
   const user = await getSessionUser();
@@ -51,12 +52,31 @@ export async function GET(req: NextRequest) {
       };
     }
   } else if (user.role === "PROFESOR") {
+    if (folderId) {
+      const folder = await prisma.materialFolder.findUnique({
+        where: { id: folderId },
+        include: { subject: { select: { schoolId: true } } },
+      });
+      const ok =
+        folder &&
+        folder.subject.schoolId === user.schoolId &&
+        (folder.createdById === user.id ||
+          (await prisma.teacherSubject.findFirst({
+            where: {
+              teacherId: user.id,
+              subjectId: folder.subjectId,
+              OR: [{ groupId: folder.groupId }, { groupId: null }],
+            },
+          })));
+      if (!ok) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+    }
     const assignments = await prisma.teacherSubject.findMany({
       where: { teacherId: user.id },
       select: { subjectId: true },
     });
     const subjectIds = assignments.map((a) => a.subjectId);
     where = {
+      subject: { schoolId: user.schoolId },
       OR: [
         { uploadedById: user.id },
         { subjectId: { in: subjectIds } },
@@ -85,7 +105,7 @@ export async function GET(req: NextRequest) {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json(materials);
+  return NextResponse.json(materials.map(withMaterialUrl));
 }
 
 export async function POST(req: NextRequest) {
@@ -102,7 +122,8 @@ export async function POST(req: NextRequest) {
   const folderId = body.folderId ? String(body.folderId) : null;
   const fileName = String(body.fileName || "");
   const filePath = String(body.filePath || "");
-  const fileUrl = body.fileUrl || null;
+  // fileUrl del cliente se ignora: el bucket es privado y se sirve vía /api/archivos.
+  const fileUrl = null;
   const mimeType = String(body.mimeType || "application/octet-stream");
   const fileSize = body.fileSize ? Number(body.fileSize) : null;
 
@@ -189,6 +210,26 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Validar que la ruta del archivo pertenezca al colegio/asignatura (evita apuntar a archivos ajenos).
+  const subjectOk = await prisma.subject.findFirst({
+    where: { id: subjectId, schoolId: user.schoolId },
+    select: { id: true },
+  });
+  if (!subjectOk) {
+    return NextResponse.json({ error: "Asignatura no encontrada" }, { status: 404 });
+  }
+  const expectedPrefix = `${user.schoolId}/${subjectId}/${folderId ? `${folderId}/` : ""}`;
+  if (!filePath.startsWith(expectedPrefix) || filePath.includes("..")) {
+    return NextResponse.json({ error: "Ruta de archivo inválida" }, { status: 400 });
+  }
+  if (user.role === "PROFESOR" && !folderId) {
+    const teaches = await prisma.teacherSubject.findFirst({
+      where: { teacherId: user.id, subjectId },
+      select: { id: true },
+    });
+    if (!teaches) return NextResponse.json({ error: "No autorizado" }, { status: 403 });
+  }
+
   const material = await prisma.material.create({
     data: {
       title,
@@ -211,5 +252,5 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json(material, { status: 201 });
+  return NextResponse.json(withMaterialUrl(material), { status: 201 });
 }

@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { AnnouncementKind } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
+import { announcementFileUrl } from "@/lib/security/authz";
+
+function withFileUrl<T extends { id: string; filePath: string | null; fileUrl: string | null }>(a: T): T {
+  return { ...a, fileUrl: a.filePath ? announcementFileUrl(a.id) : null };
+}
 
 export async function GET() {
   const user = await getSessionUser();
@@ -15,7 +20,7 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  return NextResponse.json(announcements);
+  return NextResponse.json(announcements.map(withFileUrl));
 }
 
 export async function POST(req: NextRequest) {
@@ -62,6 +67,10 @@ export async function POST(req: NextRequest) {
     if (!fileName || !filePath) {
       return NextResponse.json({ error: "Debe subir un archivo (imagen o PDF)" }, { status: 400 });
     }
+    // El archivo debe estar en la carpeta del colegio del admin.
+    if (!filePath.startsWith(`announcements/${user.schoolId}/`) || filePath.includes("..")) {
+      return NextResponse.json({ error: "Ruta de archivo inválida" }, { status: 400 });
+    }
   }
 
   const announcement = await prisma.announcement.create({
@@ -83,5 +92,5 @@ export async function POST(req: NextRequest) {
     },
   });
 
-  return NextResponse.json(announcement, { status: 201 });
+  return NextResponse.json(withFileUrl(announcement), { status: 201 });
 }

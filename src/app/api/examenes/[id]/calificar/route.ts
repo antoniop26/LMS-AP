@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
+import { staffCanManageTest } from "@/lib/security/authz";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -23,7 +24,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       where: { id: attemptId },
       include: {
         answers: { include: { question: true } },
-        test: true,
+        test: { include: { subject: { select: { schoolId: true } } } },
       },
     });
 
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: "El intento no pertenece a este examen" }, { status: 400 });
     }
 
-    if (user.role === "PROFESOR" && attempt.test.creatorId !== user.id) {
+    if (!staffCanManageTest(user, attempt.test)) {
       return NextResponse.json({ error: "No autorizado" }, { status: 403 });
     }
 
@@ -113,7 +114,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   } catch (err) {
     console.error("[calificar]", err);
     return NextResponse.json(
-      { error: err instanceof Error ? err.message : "Error al calificar" },
+      { error: "Error al calificar" },
       { status: 500 }
     );
   }

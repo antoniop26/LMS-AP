@@ -1,6 +1,7 @@
 import { createClient as createBrowserClient } from "@/lib/supabase/client";
 
-export const MATERIALS_BUCKET = "materiales";
+export { MATERIALS_BUCKET } from "@/lib/storage-constants";
+import { MATERIALS_BUCKET } from "@/lib/storage-constants";
 
 const ALLOWED_MIME = [
   "application/pdf",

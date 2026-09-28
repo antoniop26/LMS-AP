@@ -17,7 +17,7 @@ export default function UsuariosPage() {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState("ALUMNO");
-  const [password, setPassword] = useState("demo1234");
+  const [password, setPassword] = useState("");
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
   const [resettingId, setResettingId] = useState<string | null>(null);
@@ -53,7 +53,14 @@ export default function UsuariosPage() {
     const data = await res.json();
     if (!res.ok) setMsg(data.error || "Error");
     else {
-      setFullName(""); setEmail(""); setMsg("Usuario creado");
+      if (data.temporaryPassword) {
+        setTempPasswordInfo({
+          fullName: data.fullName,
+          email: data.email,
+          temporaryPassword: data.temporaryPassword,
+        });
+      }
+      setFullName(""); setEmail(""); setPassword(""); setMsg("Usuario creado");
       load();
     }
     setLoading(false);
@@ -134,8 +141,18 @@ export default function UsuariosPage() {
               </Select>
             </div>
             <div className="space-y-1">
-              <Label>Contraseña temporal</Label>
-              <Input value={password} onChange={(e) => setPassword(e.target.value)} required />
+              <Label>Contraseña temporal (opcional)</Label>
+              <Input
+                type="text"
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Vacío = generar una segura"
+                minLength={10}
+              />
+              <p className="text-xs text-gray-500">
+                Mín. 10 caracteres con mayúsculas, minúsculas y números. Si lo deja vacío se genera una automáticamente.
+              </p>
             </div>
             {msg && <p className="text-sm text-blue-700 sm:col-span-2">{msg}</p>}
             <Button type="submit" disabled={loading} className="sm:col-span-2 sm:w-fit">Crear usuario</Button>

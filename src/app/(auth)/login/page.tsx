@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,18 +20,19 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const supabase = createClient();
-      const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
-      if (authError) {
-        setError("Correo o contraseña incorrectos.");
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin",
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.error || "Correo o contraseña incorrectos.");
+        setPassword("");
         return;
       }
-      const res = await fetch("/api/auth/me");
-      const data = await res.json();
-      if (data?.role === "ADMINISTRADOR") router.push("/admin");
-      else if (data?.role === "PROFESOR") router.push("/profesor");
-      else if (data?.role === "ALUMNO") router.push("/alumno");
-      else router.push("/");
+      router.push(data?.redirectTo || "/");
       router.refresh();
     } catch {
       setError("No se pudo iniciar sesión. Intente de nuevo.");
@@ -65,7 +65,8 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="usuario@colegio.demo"
+                placeholder="usuario@colegio.edu.pa"
+                autoComplete="username"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -76,6 +77,7 @@ export default function LoginPage() {
               <Input
                 id="password"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -86,12 +88,6 @@ export default function LoginPage() {
               {loading ? "Entrando…" : "Iniciar sesión"}
             </Button>
           </form>
-          <div className="mt-6 rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
-            <p className="font-medium text-gray-800 mb-1">Cuentas demo</p>
-            <p>admin@colegio.demo / demo1234</p>
-            <p>profesor@colegio.demo / demo1234</p>
-            <p>alumno@colegio.demo / demo1234</p>
-          </div>
         </CardContent>
       </Card>
     </div>

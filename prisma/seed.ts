@@ -5,7 +5,23 @@ import "dotenv/config";
 
 const prisma = new PrismaClient();
 
-const DEMO_PASSWORD = "demo1234";
+import { randomBytes } from "crypto";
+
+// Nunca usar una clave fija conocida: SEED_PASSWORD (≥10) o una aleatoria.
+const DEMO_PASSWORD =
+  process.env.SEED_PASSWORD && process.env.SEED_PASSWORD.length >= 10
+    ? process.env.SEED_PASSWORD
+    : `Seed-${randomBytes(9).toString("base64url")}-7a`;
+
+// El seed BORRA datos del colegio demo: bloqueado contra DBs remotas (piloto) salvo opt-in explícito.
+if (
+  (process.env.NODE_ENV === "production" || /supabase\.(co|com)/.test(process.env.DATABASE_URL || "")) &&
+  process.env.SEED_ALLOW_REMOTE !== "1"
+) {
+  throw new Error(
+    "Seed bloqueado: la DB parece ser la del piloto. Defina SEED_ALLOW_REMOTE=1 solo si está seguro."
+  );
+}
 
 async function ensureAuthUser(
   admin: ReturnType<typeof createClient>,
@@ -219,9 +235,8 @@ async function main() {
   });
 
   console.log("\n✅ Seed completado — Smart Academy Panama");
-  console.log("   admin@colegio.demo / demo1234");
-  console.log("   profesor@colegio.demo / demo1234");
-  console.log("   alumno@colegio.demo / demo1234");
+  console.log("   admin@colegio.demo / profesor@colegio.demo / alumno@colegio.demo");
+  console.log(`   Contraseña (solo local, no compartir): ${DEMO_PASSWORD}`);
   if (!adminAuth) {
     console.log("\n⚠️  Auth de Supabase no se pobló. Configure .env y re-ejecute el seed.");
   }

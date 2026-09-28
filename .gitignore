@@ -37,3 +37,7 @@ next-env.d.ts
 
 .env
 .env.local
+
+# credenciales locales del piloto (NUNCA commitear)
+.pilot-credentials.local
+*.local.cjs

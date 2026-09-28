@@ -61,9 +61,16 @@ export function Sidebar({
   const items = NAV[role] || [];
 
   async function logout() {
+    // 1) Servidor: revoca el refresh token y borra cookies sb-* de la respuesta.
+    try {
+      await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" });
+    } catch {
+      // continuar con limpieza local
+    }
+    // 2) Cliente: limpia cualquier resto de sesión local.
     const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/login");
+    await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+    router.replace("/login");
     router.refresh();
   }
 

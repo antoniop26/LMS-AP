@@ -79,11 +79,15 @@ El seed crea:
 - Examen de práctica en Matemáticas
 - Usuarios (Auth + Prisma):
 
-| Correo | Contraseña | Rol |
-|--------|------------|-----|
-| admin@colegio.demo | demo1234 | Administrador |
-| profesor@colegio.demo | demo1234 | Profesor |
-| alumno@colegio.demo | demo1234 | Alumno |
+| Correo | Rol |
+|--------|-----|
+| admin@colegio.demo | Administrador |
+| profesor@colegio.demo | Profesor |
+| alumno@colegio.demo | Alumno |
+
+La contraseña se toma de `SEED_PASSWORD` (≥10 caracteres) o se genera aleatoria y se
+imprime en consola. **No existe clave demo fija.** En producción (piloto) las cuentas
+demo están rotadas/baneadas: ver [`docs/PILOTO.md`](docs/PILOTO.md).
 
 ## 4. Ejecutar
 
@@ -91,7 +95,7 @@ El seed crea:
 npm run dev
 ```
 
-Abra http://localhost:3000 e inicie sesión con una cuenta demo.
+Abra http://localhost:3000 e inicie sesión con la cuenta creada por el seed (solo desarrollo local).
 
 ## Scripts útiles
 
