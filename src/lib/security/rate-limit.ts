@@ -77,3 +77,20 @@ export function clientIp(headers: Headers): string {
   if (fwd) return fwd.split(",")[0].trim();
   return headers.get("x-real-ip") || "unknown";
 }
+
+/**
+ * Limitador genérico (misma store en memoria, best effort por instancia).
+ * Registra un intento en `key` y devuelve segundos de espera si se superó `max`
+ * dentro de `windowMs`; 0 si está permitido.
+ */
+export function hitRateLimit(key: string, max: number, windowMs: number, now = Date.now()): number {
+  prune(now);
+  const b = store.get(key);
+  if (!b || now - b.firstAt > windowMs) {
+    store.set(key, { count: 1, firstAt: now });
+    return 0;
+  }
+  if (b.count >= max) return Math.max(1, Math.ceil((b.firstAt + windowMs - now) / 1000));
+  b.count += 1;
+  return 0;
+}

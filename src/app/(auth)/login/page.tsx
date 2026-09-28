@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("reset") === "ok") {
+      setNotice("Contraseña actualizada, inicia sesión.");
+      window.history.replaceState(null, "", "/login");
+    }
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -59,6 +69,11 @@ export default function LoginPage() {
           <CardDescription>Inicie sesión en Tigers LMS</CardDescription>
         </CardHeader>
         <CardContent>
+          {notice && (
+            <p className="mb-4 rounded-md bg-green-50 p-3 text-sm text-green-700" role="status">
+              {notice}
+            </p>
+          )}
           <form onSubmit={onSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Correo</Label>
@@ -87,6 +102,11 @@ export default function LoginPage() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Entrando…" : "Iniciar sesión"}
             </Button>
+            <p className="text-center text-sm">
+              <Link href="/olvide-contrasena" className="text-blue-700 hover:underline">
+                ¿Olvidaste tu contraseña?
+              </Link>
+            </p>
           </form>
         </CardContent>
       </Card>

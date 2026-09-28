@@ -88,3 +88,20 @@ Reaplicar el SQL (idempotente): `node scripts/apply-sql.cjs prisma/sql/001_pilot
 - [ ] Probar logout y que tras 5 fallos aparece el bloqueo temporal.
 - [ ] Acordar con el colegio política de datos (menores de edad), respaldo y contacto de soporte.
 - [ ] Rotar la service role key y la clave de DB si alguna vez se compartieron fuera del equipo.
+
+## 7. Recuperación / definición de contraseña
+
+- **Login → "¿Olvidaste tu contraseña?"** (`/olvide-contrasena`): pide el correo y llama a
+  `POST /api/auth/forgot-password` → `resetPasswordForEmail(email, { redirectTo: <sitio>/restablecer-contrasena })`.
+  Respuesta **siempre genérica** (no revela si el correo existe). Límite: 3 solicitudes por IP+correo / 15 min
+  y 10 por IP / hora (más el límite de envío de correos de Supabase; el SMTP integrado permite muy pocos por hora,
+  configurar SMTP propio para producción).
+- **`/restablecer-contrasena`**: acepta el enlace del correo (`{{ .ConfirmationURL }}`) en sus tres formas:
+  `#access_token=…&type=recovery` (implícito, por defecto), `?token_hash=…&type=recovery` (verifyOtp) y
+  `?code=…` (PKCE, mismo navegador). La sesión de recuperación **no** se guarda en cookies; la URL se limpia.
+  Al enviar, `POST /api/auth/update-password` valida la política (≥10, mayúsculas, minúsculas, números, sin claves comunes)
+  en servidor, hace `updateUser({ password })`, revoca todas las sesiones del usuario (`signOut` global)
+  y el cliente vuelve a `/login` con "Contraseña actualizada, inicia sesión".
+- **Crear un admin real sin conocer su clave**:
+  `node scripts/create-admin.cjs --email=correo@dominio --name="Nombre Apellido"` (idempotente; mismo colegio que
+  `admin@colegio.demo`), luego enviarle el correo de recuperación (desde `/olvide-contrasena`).

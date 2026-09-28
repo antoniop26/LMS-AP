@@ -1,7 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-const PUBLIC = ["/login", "/"];
+// Rutas públicas (sin sesión): login y flujo de recuperación de contraseña.
+const PUBLIC = ["/login", "/", "/olvide-contrasena", "/restablecer-contrasena"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
