@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { examWindowMessage, examWindowStatus } from "@/lib/exam-window";
 import { studentCanSeeTest } from "@/lib/security/authz";
+import { roundPoints, sumQuestionPoints } from "@/lib/test-points";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getSessionUser();
@@ -90,14 +91,17 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     }
   }
 
-  const totalPoints = test.questions.reduce((s, q) => s + q.points, 0);
-  const score = totalPoints > 0 ? (autoScore / totalPoints) * test.maxScore : 0;
+  // La nota se guarda en puntos obtenidos (p. ej. 18 de 25), sin escalar a 100.
+  const totalPoints = sumQuestionPoints(test.questions);
+  if (test.maxScore !== totalPoints) {
+    await prisma.test.update({ where: { id: test.id }, data: { maxScore: totalPoints } });
+  }
 
   const updated = await prisma.testAttempt.update({
     where: { id: attempt.id },
     data: {
       status: needsManual ? "SUBMITTED" : "GRADED",
-      score: needsManual ? null : Math.round(score * 100) / 100,
+      score: needsManual ? null : roundPoints(autoScore),
       submittedAt: new Date(),
     },
     include: { answers: { include: { grade: true } } },

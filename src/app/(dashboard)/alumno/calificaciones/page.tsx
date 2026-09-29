@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { formatScore, scorePercent } from "@/lib/test-points";
 
 export default function CalificacionesPage() {
   const [attempts, setAttempts] = useState<any[]>([]);
@@ -27,8 +28,11 @@ export default function CalificacionesPage() {
                   {a.status === "GRADED" ? "Calificado" : "Pendiente"}
                 </Badge>
                 <p className="mt-1 text-lg font-bold text-blue-700">
-                  {a.score != null ? `${a.score} / ${a.test?.maxScore ?? 100}` : "—"}
+                  {a.score != null ? formatScore(a.score, a.test?.maxScore) : "—"}
                 </p>
+                {a.score != null && scorePercent(a.score, a.test?.maxScore) != null && (
+                  <p className="text-xs text-gray-500">{scorePercent(a.score, a.test?.maxScore)}%</p>
+                )}
               </div>
             </CardContent>
           </Card>

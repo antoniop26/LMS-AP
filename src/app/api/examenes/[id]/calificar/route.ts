@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { staffCanManageTest } from "@/lib/security/authz";
+import { roundPoints, sumQuestionPoints } from "@/lib/test-points";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   try {
@@ -92,20 +93,23 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: "Intento no encontrado" }, { status: 404 });
     }
 
-    // Score over the full exam (missing answers count as 0)
-    const totalQuestionPoints = await prisma.question.aggregate({
+    // Nota = puntos obtenidos (respuestas faltantes cuentan 0), sobre el total
+    // del examen = suma de puntos de sus preguntas. Sin escalar a 100.
+    const allQuestions = await prisma.question.findMany({
       where: { testId: graded.testId },
-      _sum: { points: true },
+      select: { points: true },
     });
-    const total = totalQuestionPoints._sum.points ?? 0;
+    const total = sumQuestionPoints(allQuestions);
+    if (graded.test.maxScore !== total) {
+      await prisma.test.update({ where: { id: graded.testId }, data: { maxScore: total } });
+    }
     const earned = graded.answers.reduce((s, a) => s + (a.grade?.points ?? 0), 0);
-    const score = total > 0 ? (earned / total) * graded.test.maxScore : 0;
 
     const updated = await prisma.testAttempt.update({
       where: { id: attemptId },
       data: {
         status: "GRADED",
-        score: Math.round(score * 100) / 100,
+        score: roundPoints(earned),
         submittedAt: graded.submittedAt ?? new Date(),
       },
     });

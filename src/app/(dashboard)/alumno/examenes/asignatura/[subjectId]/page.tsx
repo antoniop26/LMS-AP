@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { examWindowStatus } from "@/lib/exam-window";
+import { formatScore } from "@/lib/test-points";
 
 type TestRow = {
   id: string;
@@ -14,6 +15,7 @@ type TestRow = {
   subject?: { name: string };
   opensAt?: string | null;
   closesAt?: string | null;
+  maxScore?: number;
   _count?: { questions: number };
   attempts?: { status: string; score: number | null }[];
 };
@@ -85,6 +87,7 @@ export default function AlumnoExamenesAsignaturaPage() {
                     <p className="font-medium text-gray-900">{t.title}</p>
                     <p className="text-sm text-gray-500">
                       {t._count?.questions || 0} preguntas
+                      {t.maxScore != null ? ` · ${t.maxScore} puntos` : ""}
                       {windowLabel ? ` · ${windowLabel}` : ""}
                     </p>
                     {done && (
@@ -92,7 +95,7 @@ export default function AlumnoExamenesAsignaturaPage() {
                         variant={attempt.status === "GRADED" ? "success" : "secondary"}
                         className="mt-1"
                       >
-                        {attempt.status === "GRADED" ? `Nota: ${attempt.score}` : "Enviado"}
+                        {attempt.status === "GRADED" ? `Nota: ${formatScore(attempt.score, t.maxScore)}` : "Enviado"}
                       </Badge>
                     )}
                     {!done && !window.open && window.reason === "not_open" && (

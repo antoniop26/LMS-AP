@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { formatScore } from "@/lib/test-points";
 
 type GradeDraft = { points: string; feedback: string };
 
@@ -275,7 +276,7 @@ export default function ExamenDetailPage() {
                   <Badge variant="outline">Enviado</Badge>
                   {att!.score != null && (
                     <span className="font-semibold text-blue-700">
-                      {att!.score}/{test.maxScore}
+                      {formatScore(att!.score, test.maxScore, { percent: true })}
                     </span>
                   )}
                 </>
@@ -408,7 +409,7 @@ export default function ExamenDetailPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Preguntas</CardTitle>
+          <CardTitle>Preguntas · Total: {test.maxScore} puntos</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {test.questions?.map((q: any, i: number) => (
@@ -470,7 +471,7 @@ export default function ExamenDetailPage() {
                       <Badge variant="default">Enviado</Badge>
                       {att.score != null && (
                         <span className="text-sm font-semibold text-blue-700">
-                          {att.score}/{test.maxScore}
+                          {formatScore(att.score, test.maxScore, { percent: true })}
                         </span>
                       )}
                     </>

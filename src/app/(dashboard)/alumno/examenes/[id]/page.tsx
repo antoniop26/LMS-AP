@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
 import { examWindowMessage, examWindowStatus } from "@/lib/exam-window";
+import { formatScore } from "@/lib/test-points";
 
 export default function TomarExamenPage() {
   const params = useParams();
@@ -56,6 +57,7 @@ export default function TomarExamenPage() {
         <Link href="/alumno/examenes" className="text-sm text-blue-600 hover:underline">← Volver</Link>
         <h1 className="mt-2 text-2xl font-bold text-gray-900">{test.title}</h1>
         <p className="text-gray-500">{test.description || test.subject?.name}</p>
+        <p className="mt-1 text-sm text-gray-500">Total: {test.maxScore} puntos</p>
         {(test.opensAt || test.closesAt) && (
           <p className="mt-1 text-sm text-gray-500">
             {test.opensAt ? `Abre ${new Date(test.opensAt).toLocaleString("es-PA")}` : "Sin inicio fijo"}
@@ -69,7 +71,7 @@ export default function TomarExamenPage() {
         <Card>
           <CardContent className="py-6">
             <p className="font-medium">Ya envió este examen.</p>
-            <p className="text-sm text-gray-500 mt-1">Estado: {attempt.status}{attempt.score != null ? ` · Nota: ${attempt.score}/${test.maxScore}` : ""}</p>
+            <p className="text-sm text-gray-500 mt-1">Estado: {attempt.status}{attempt.score != null ? ` · Nota: ${formatScore(attempt.score, test.maxScore, { percent: true })}` : ""}</p>
           </CardContent>
         </Card>
       ) : (() => {

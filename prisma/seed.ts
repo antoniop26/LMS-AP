@@ -199,7 +199,7 @@ async function main() {
       groupId: groupA.id,
       creatorId: createdUsers.PROFESOR,
       published: true,
-      maxScore: 100,
+      maxScore: 7, // suma de los puntos de las preguntas (2 + 2 + 3)
       questions: {
         create: [
           {

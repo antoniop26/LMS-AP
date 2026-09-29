@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { QuestionType } from "@prisma/client";
+import { sumQuestionPoints } from "@/lib/test-points";
 
 export async function GET(req: NextRequest) {
   const user = await getSessionUser();
@@ -62,7 +63,6 @@ export async function POST(req: NextRequest) {
   const subjectId = String(body.subjectId || "");
   const groupId = body.groupId || null;
   const published = Boolean(body.published);
-  const maxScore = Number(body.maxScore) || 100;
   const questions = Array.isArray(body.questions) ? body.questions : [];
   const opensAt = body.opensAt ? new Date(body.opensAt) : null;
   const closesAt = body.closesAt ? new Date(body.closesAt) : null;
@@ -70,6 +70,22 @@ export async function POST(req: NextRequest) {
   if (!title || !subjectId) {
     return NextResponse.json({ error: "Datos incompletos" }, { status: 400 });
   }
+  if (questions.length === 0) {
+    return NextResponse.json({ error: "Agregue al menos una pregunta" }, { status: 400 });
+  }
+  for (const q of questions) {
+    const pts = q?.points ?? 1;
+    if (typeof pts !== "number" || !Number.isFinite(pts) || pts <= 0) {
+      return NextResponse.json(
+        { error: "Cada pregunta debe valer un número de puntos mayor que 0" },
+        { status: 400 }
+      );
+    }
+  }
+  // El puntaje máximo del examen es la suma de los puntos de sus preguntas.
+  const maxScore = sumQuestionPoints(
+    questions.map((q: { points?: number }) => ({ points: q?.points ?? 1 }))
+  );
   const subject = await prisma.subject.findFirst({
     where: { id: subjectId, schoolId: user.schoolId },
     select: { id: true },

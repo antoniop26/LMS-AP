@@ -11,6 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { examWindowStatus } from "@/lib/exam-window";
+import { sumQuestionPoints } from "@/lib/test-points";
 
 type Q = {
   prompt: string;
@@ -47,6 +48,8 @@ export default function ProfesorExamenesPage() {
   const [editOpensAt, setEditOpensAt] = useState("");
   const [editClosesAt, setEditClosesAt] = useState("");
   const [savingWindow, setSavingWindow] = useState(false);
+  const [formError, setFormError] = useState("");
+  const totalPoints = useMemo(() => sumQuestionPoints(questions), [questions]);
 
   async function load() {
     const [t, s, g] = await Promise.all([
@@ -109,8 +112,9 @@ export default function ProfesorExamenesPage() {
 
   async function create(e: React.FormEvent) {
     e.preventDefault();
+    setFormError("");
     setLoading(true);
-    await fetch("/api/examenes", {
+    const res = await fetch("/api/examenes", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -124,6 +128,12 @@ export default function ProfesorExamenesPage() {
         questions,
       }),
     });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setFormError(data.error || "No se pudo crear el examen");
+      setLoading(false);
+      return;
+    }
     setShowForm(false);
     setTitle("");
     setDescription("");
@@ -223,7 +233,12 @@ export default function ProfesorExamenesPage() {
 
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-medium text-gray-900">Preguntas</h3>
+                  <div>
+                    <h3 className="font-medium text-gray-900">Preguntas</h3>
+                    <p className="text-sm font-semibold text-blue-700" data-testid="exam-total-points">
+                      Total: {totalPoints} {totalPoints === 1 ? "punto" : "puntos"}
+                    </p>
+                  </div>
                   <Button type="button" variant="outline" size="sm" onClick={() => setQuestions((q) => [...q, { prompt: "", type: "SHORT_ANSWER", points: 1, options: [] }])}>
                     Añadir pregunta
                   </Button>
@@ -240,7 +255,7 @@ export default function ProfesorExamenesPage() {
                             <SelectItem value="LONG_ANSWER">Respuesta larga</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Input type="number" className="w-24" value={q.points} onChange={(e) => updateQ(i, { points: Number(e.target.value) })} min={0.5} step={0.5} />
+                        <Input type="number" className="w-24" value={q.points} onChange={(e) => updateQ(i, { points: e.target.value === "" ? 0 : Number(e.target.value) })} min={0.5} step={0.5} required aria-label="Puntos" />
                         <Button type="button" variant="ghost" size="icon" onClick={() => setQuestions((qs) => qs.filter((_, idx) => idx !== i))}>
                           <Trash2 className="h-4 w-4 text-red-500" />
                         </Button>
@@ -288,7 +303,11 @@ export default function ProfesorExamenesPage() {
                 <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />
                 Publicar inmediatamente
               </label>
-              <Button type="submit" disabled={loading || !subjectId || !title}>Crear examen</Button>
+              <p className="text-sm text-gray-600">
+                Puntaje máximo del examen: <span className="font-semibold">{totalPoints} puntos</span> (suma de los puntos de cada pregunta).
+              </p>
+              {formError && <p className="text-sm text-red-600">{formError}</p>}
+              <Button type="submit" disabled={loading || !subjectId || !title || totalPoints <= 0}>Crear examen</Button>
             </form>
           </CardContent>
         </Card>
@@ -314,6 +333,7 @@ export default function ProfesorExamenesPage() {
                           {t._count?.questions || 0} pregunta{(t._count?.questions || 0) === 1 ? "" : "s"}
                           {" · "}
                           {t._count?.attempts || 0} intento{(t._count?.attempts || 0) === 1 ? "" : "s"}
+                          {` · Total: ${t.maxScore} puntos`}
                           {t.opensAt
                             ? ` · Abre ${new Date(t.opensAt).toLocaleString("es-PA")}`
                             : ""}

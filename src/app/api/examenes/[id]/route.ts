@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
 import { staffCanManageTest, studentCanSeeTest } from "@/lib/security/authz";
+import { sumQuestionPoints } from "@/lib/test-points";
 
 const attemptIncludeForTeacher = {
   student: { select: { id: true, fullName: true, email: true } },
@@ -90,6 +91,9 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   });
 
   if (!test) return NextResponse.json({ error: "No encontrado" }, { status: 404 });
+
+  // El total del examen siempre es la suma de los puntos de sus preguntas.
+  test.maxScore = sumQuestionPoints(test.questions);
 
   if (!isTeacherOrAdmin) {
     // Alumno: solo exámenes publicados de su colegio y grupo; 404 para no revelar existencia.

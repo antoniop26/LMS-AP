@@ -206,7 +206,8 @@ model Test {
   creatorId   String
   creator     User     @relation("TestCreator", fields: [creatorId], references: [id], onDelete: Cascade)
   published   Boolean  @default(false)
-  maxScore    Float    @default(100)
+  /// Puntaje máximo = suma de Question.points (se calcula al crear y se mantiene sincronizado).
+  maxScore    Float    @default(0)
   opensAt     DateTime?
   closesAt    DateTime?
   createdAt   DateTime @default(now())
