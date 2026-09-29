@@ -11,7 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { uploadMaterial } from "@/lib/storage";
 import { formatBytes } from "@/lib/utils";
-import { Download, FileUp, FolderOpen } from "lucide-react";
+import { Download, Eye, FileUp, FolderOpen } from "lucide-react";
+import { isInlineViewable, viewUrl } from "@/lib/download-filename";
 
 type Folder = {
   id: string;
@@ -32,6 +33,7 @@ type Material = {
   title: string;
   fileName: string;
   fileUrl: string | null;
+  mimeType?: string | null;
   fileSize: number | null;
   folderId: string | null;
   uploadedBy?: { fullName: string };
@@ -180,12 +182,22 @@ export default function AlumnoMaterialesAsignaturaPage() {
                     </p>
                   </div>
                   {m.fileUrl && (
-                    <a href={m.fileUrl} download={m.fileName} data-testid="material-download">
-                      <Button variant="outline" size="sm">
-                        <Download className="mr-2 h-4 w-4" />
-                        Descargar
-                      </Button>
-                    </a>
+                    <div className="flex shrink-0 gap-2">
+                      {isInlineViewable(m.mimeType, m.fileName) && (
+                        <a href={viewUrl(m.fileUrl)} target="_blank" rel="noopener noreferrer" data-testid="material-view">
+                          <Button variant="ghost" size="sm">
+                            <Eye className="mr-2 h-4 w-4" />
+                            Ver
+                          </Button>
+                        </a>
+                      )}
+                      <a href={m.fileUrl} download={m.fileName} data-testid="material-download">
+                        <Button variant="outline" size="sm">
+                          <Download className="mr-2 h-4 w-4" />
+                          Descargar
+                        </Button>
+                      </a>
+                    </div>
                   )}
                 </div>
               ))}
@@ -242,6 +254,20 @@ export default function AlumnoMaterialesAsignaturaPage() {
                         {m.fileSize ? ` · ${formatBytes(m.fileSize)}` : ""}
                       </span>
                       {m.fileUrl && (
+                        <span className="flex shrink-0 items-center gap-3">
+                        {isInlineViewable(m.mimeType, m.fileName) && (
+                          <a
+                            href={viewUrl(m.fileUrl)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title={`Ver ${m.fileName}`}
+                            aria-label="Ver"
+                            className="text-blue-700 hover:underline"
+                            data-testid="material-view"
+                          >
+                            <Eye className="inline h-3.5 w-3.5" />
+                          </a>
+                        )}
                         <a
                           href={m.fileUrl}
                           download={m.fileName}
@@ -252,6 +278,7 @@ export default function AlumnoMaterialesAsignaturaPage() {
                         >
                           <Download className="inline h-3.5 w-3.5" />
                         </a>
+                        </span>
                       )}
                     </div>
                   ))}

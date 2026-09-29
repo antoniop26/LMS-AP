@@ -29,3 +29,24 @@ export function withDownloadParam(signedUrl: string, fileName: string): string {
   url.searchParams.set("download", fileName);
   return url.toString();
 }
+
+const INLINE_MIME = ["application/pdf", "image/png", "image/jpeg", "image/gif", "image/webp"];
+const INLINE_EXT = /\.(pdf|png|jpe?g|gif|webp)$/i;
+
+/**
+ * ¿Se puede abrir en el navegador ("Ver")? Solo PDF e imágenes raster comunes
+ * (sin SVG). Se acepta por MIME o por extensión del nombre original/ruta.
+ */
+export function isInlineViewable(
+  mimeType: string | null | undefined,
+  ...names: (string | null | undefined)[]
+): boolean {
+  const mime = String(mimeType || "").toLowerCase().split(";")[0].trim();
+  if (INLINE_MIME.includes(mime)) return true;
+  return names.some((n) => !!n && INLINE_EXT.test(n));
+}
+
+/** URL interna para ver en línea (el servidor igual fuerza descarga si no es PDF/imagen). */
+export function viewUrl(fileUrl: string): string {
+  return `${fileUrl}${fileUrl.includes("?") ? "&" : "?"}view=1`;
+}

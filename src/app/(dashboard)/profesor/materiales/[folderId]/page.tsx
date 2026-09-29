@@ -12,7 +12,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { uploadMaterial } from "@/lib/storage";
 import { formatBytes } from "@/lib/utils";
-import { ArrowLeft, Download, FileUp, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, Eye, FileUp, Trash2 } from "lucide-react";
+import { isInlineViewable, viewUrl } from "@/lib/download-filename";
 
 type Material = {
   id: string;
@@ -20,6 +21,7 @@ type Material = {
   description: string | null;
   fileName: string;
   fileUrl: string | null;
+  mimeType?: string | null;
   fileSize: number | null;
   uploadedBy: { id: string; fullName: string; role: string };
   createdAt: string;
@@ -262,6 +264,13 @@ export default function ProfesorCarpetaDetallePage() {
                     </p>
                   </div>
                   <div className="flex shrink-0 gap-1">
+                    {m.fileUrl && isInlineViewable(m.mimeType, m.fileName) && (
+                      <a href={viewUrl(m.fileUrl)} target="_blank" rel="noopener noreferrer" title={`Ver ${m.fileName}`} data-testid="material-view">
+                        <Button variant="ghost" size="icon" aria-label="Ver">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </a>
+                    )}
                     {m.fileUrl && (
                       <a href={m.fileUrl} download={m.fileName} title={`Descargar ${m.fileName}`} data-testid="material-download">
                         <Button variant="ghost" size="icon" aria-label="Descargar">
@@ -364,6 +373,13 @@ export default function ProfesorCarpetaDetallePage() {
                   </p>
                 </div>
                 <div className="flex gap-1">
+                  {m.fileUrl && isInlineViewable(m.mimeType, m.fileName) && (
+                    <a href={viewUrl(m.fileUrl)} target="_blank" rel="noopener noreferrer" title={`Ver ${m.fileName}`} data-testid="material-view">
+                      <Button variant="ghost" size="icon" aria-label="Ver">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </a>
+                  )}
                   {m.fileUrl && (
                     <a href={m.fileUrl} download={m.fileName} title={`Descargar ${m.fileName}`} data-testid="material-download">
                       <Button variant="ghost" size="icon" aria-label="Descargar">
