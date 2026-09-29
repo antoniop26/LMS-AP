@@ -12,7 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { uploadMaterial } from "@/lib/storage";
 import { formatBytes } from "@/lib/utils";
-import { ArrowLeft, ExternalLink, FileUp, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, FileUp, Trash2 } from "lucide-react";
 
 type Material = {
   id: string;
@@ -263,9 +263,9 @@ export default function ProfesorCarpetaDetallePage() {
                   </div>
                   <div className="flex shrink-0 gap-1">
                     {m.fileUrl && (
-                      <a href={m.fileUrl} target="_blank" rel="noreferrer">
-                        <Button variant="ghost" size="icon">
-                          <ExternalLink className="h-4 w-4" />
+                      <a href={m.fileUrl} download={m.fileName} title={`Descargar ${m.fileName}`} data-testid="material-download">
+                        <Button variant="ghost" size="icon" aria-label="Descargar">
+                          <Download className="h-4 w-4" />
                         </Button>
                       </a>
                     )}
@@ -365,9 +365,9 @@ export default function ProfesorCarpetaDetallePage() {
                 </div>
                 <div className="flex gap-1">
                   {m.fileUrl && (
-                    <a href={m.fileUrl} target="_blank" rel="noreferrer">
-                      <Button variant="ghost" size="icon">
-                        <ExternalLink className="h-4 w-4" />
+                    <a href={m.fileUrl} download={m.fileName} title={`Descargar ${m.fileName}`} data-testid="material-download">
+                      <Button variant="ghost" size="icon" aria-label="Descargar">
+                        <Download className="h-4 w-4" />
                       </Button>
                     </a>
                   )}

@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { uploadMaterial } from "@/lib/storage";
 import { formatBytes } from "@/lib/utils";
-import { Download, ExternalLink, FileUp, FolderOpen } from "lucide-react";
+import { Download, FileUp, FolderOpen } from "lucide-react";
 
 type Folder = {
   id: string;
@@ -180,7 +180,7 @@ export default function AlumnoMaterialesAsignaturaPage() {
                     </p>
                   </div>
                   {m.fileUrl && (
-                    <a href={m.fileUrl} target="_blank" rel="noreferrer">
+                    <a href={m.fileUrl} download={m.fileName} data-testid="material-download">
                       <Button variant="outline" size="sm">
                         <Download className="mr-2 h-4 w-4" />
                         Descargar
@@ -244,11 +244,13 @@ export default function AlumnoMaterialesAsignaturaPage() {
                       {m.fileUrl && (
                         <a
                           href={m.fileUrl}
-                          target="_blank"
-                          rel="noreferrer"
+                          download={m.fileName}
+                          title={`Descargar ${m.fileName}`}
+                          aria-label="Descargar"
                           className="text-blue-700 hover:underline"
+                          data-testid="material-download"
                         >
-                          <ExternalLink className="inline h-3.5 w-3.5" />
+                          <Download className="inline h-3.5 w-3.5" />
                         </a>
                       )}
                     </div>
