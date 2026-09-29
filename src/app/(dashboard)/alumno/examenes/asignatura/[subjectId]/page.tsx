@@ -17,7 +17,7 @@ type TestRow = {
   closesAt?: string | null;
   maxScore?: number;
   _count?: { questions: number };
-  attempts?: { status: string; score: number | null }[];
+  attempts?: { id: string; status: string; score: number | null }[];
 };
 
 function formatWindow(opensAt?: string | null, closesAt?: string | null) {
@@ -106,9 +106,9 @@ export default function AlumnoExamenesAsignaturaPage() {
                     )}
                   </div>
                   {done ? (
-                    <Link href={`/alumno/examenes/${t.id}`}>
+                    <Link href={`/alumno/calificaciones/${attempt.id}`}>
                       <Button variant="outline" size="sm">
-                        Ver
+                        Ver revisión
                       </Button>
                     </Link>
                   ) : window.open ? (

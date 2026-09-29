@@ -72,6 +72,9 @@ export default function TomarExamenPage() {
           <CardContent className="py-6">
             <p className="font-medium">Ya envió este examen.</p>
             <p className="text-sm text-gray-500 mt-1">Estado: {attempt.status}{attempt.score != null ? ` · Nota: ${formatScore(attempt.score, test.maxScore, { percent: true })}` : ""}</p>
+            <Link href={`/alumno/calificaciones/${attempt.id}`} className="mt-3 inline-block">
+              <Button variant="outline" size="sm">Ver revisión</Button>
+            </Link>
           </CardContent>
         </Card>
       ) : (() => {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 import { formatScore, scorePercent } from "@/lib/test-points";
 
 export default function CalificacionesPage() {
@@ -17,11 +18,13 @@ export default function CalificacionesPage() {
       <h1 className="text-2xl font-bold text-gray-900">Calificaciones</h1>
       <div className="grid gap-3">
         {attempts.map((a) => (
-          <Card key={a.id}>
+          <Link key={a.id} href={`/alumno/calificaciones/${a.id}`} className="block" data-testid="grade-row">
+          <Card className="transition-colors hover:border-blue-300 hover:bg-blue-50/40">
             <CardContent className="flex items-center justify-between py-4">
               <div>
                 <p className="font-medium text-gray-900">{a.test?.title}</p>
                 <p className="text-sm text-gray-500">{a.test?.subject?.name}</p>
+                <p className="mt-1 text-sm font-medium text-blue-700">Ver revisión →</p>
               </div>
               <div className="text-right">
                 <Badge variant={a.status === "GRADED" ? "success" : "secondary"}>
@@ -36,6 +39,7 @@ export default function CalificacionesPage() {
               </div>
             </CardContent>
           </Card>
+          </Link>
         ))}
         {attempts.length === 0 && <p className="text-sm text-gray-500">Aún no tiene calificaciones.</p>}
       </div>

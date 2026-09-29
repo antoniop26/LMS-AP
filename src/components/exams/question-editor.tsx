@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowDown, ArrowUp, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { sumQuestionPoints } from "@/lib/test-points";
 
 export type EditableQuestion = {
@@ -76,11 +76,10 @@ export function QuestionEditor({
   function updateQ(i: number, patch: Partial<EditableQuestion>) {
     onChange(questions.map((q, idx) => (idx === i ? { ...q, ...patch } : q)));
   }
-  function move(i: number, dir: -1 | 1) {
-    const j = i + dir;
-    if (j < 0 || j >= questions.length) return;
+  /** Inserta una pregunta en blanco justo después de la posición `i` (-1 = al inicio). */
+  function insertAfter(i: number) {
     const next = questions.slice();
-    [next[i], next[j]] = [next[j], next[i]];
+    next.splice(i + 1, 0, blankQuestion("SHORT_ANSWER"));
     onChange(next);
   }
   function changeType(i: number, type: EditableQuestion["type"]) {
@@ -106,15 +105,23 @@ export function QuestionEditor({
             Total: {totalPoints} {totalPoints === 1 ? "punto" : "puntos"}
           </p>
         </div>
-        <Button type="button" variant="outline" size="sm" onClick={() => onChange([...questions, blankQuestion("SHORT_ANSWER")])}>
-          Añadir pregunta
+        <Button type="button" variant="outline" size="sm" onClick={() => insertAfter(questions.length - 1)}>
+          <Plus className="mr-1 h-4 w-4" />
+          Añadir al final
         </Button>
       </div>
       {questions.length === 0 && (
-        <p className="text-sm text-red-600">Agregue al menos una pregunta.</p>
+        <div className="space-y-2 rounded-md border border-dashed border-gray-300 p-4 text-center">
+          <p className="text-sm text-red-600">Agregue al menos una pregunta.</p>
+          <Button type="button" variant="outline" size="sm" onClick={() => insertAfter(-1)}>
+            <Plus className="mr-1 h-4 w-4" />
+            Agregar pregunta
+          </Button>
+        </div>
       )}
       {questions.map((q, i) => (
-        <Card key={q.key} className="border-dashed" data-testid="question-card">
+        <div key={q.key} className="space-y-2">
+        <Card className="border-dashed" data-testid="question-card">
           <CardContent className="space-y-3 pt-4">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm font-medium text-gray-500">{i + 1}.</span>
@@ -138,12 +145,6 @@ export function QuestionEditor({
               />
               <span className="text-xs text-gray-500">pts</span>
               <div className="ml-auto flex gap-1">
-                <Button type="button" variant="ghost" size="icon" aria-label="Subir" disabled={i === 0} onClick={() => move(i, -1)}>
-                  <ArrowUp className="h-4 w-4" />
-                </Button>
-                <Button type="button" variant="ghost" size="icon" aria-label="Bajar" disabled={i === questions.length - 1} onClick={() => move(i, 1)}>
-                  <ArrowDown className="h-4 w-4" />
-                </Button>
                 <Button type="button" variant="ghost" size="icon" aria-label="Eliminar pregunta" onClick={() => onChange(questions.filter((_, idx) => idx !== i))}>
                   <Trash2 className="h-4 w-4 text-red-500" />
                 </Button>
@@ -202,6 +203,20 @@ export function QuestionEditor({
             )}
           </CardContent>
         </Card>
+        <div className="flex justify-center">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="text-blue-700 hover:bg-blue-50"
+            data-testid="insert-after"
+            onClick={() => insertAfter(i)}
+          >
+            <Plus className="mr-1 h-4 w-4" />
+            Agregar pregunta aquí
+          </Button>
+        </div>
+        </div>
       ))}
     </div>
   );
