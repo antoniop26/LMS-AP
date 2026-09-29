@@ -4,6 +4,7 @@ import { getSessionUser } from "@/lib/auth";
 import { examWindowMessage, examWindowStatus } from "@/lib/exam-window";
 import { studentCanSeeTest } from "@/lib/security/authz";
 import { roundPoints, sumQuestionPoints } from "@/lib/test-points";
+import { autoGradeAnswer } from "@/lib/exam-questions";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const user = await getSessionUser();
@@ -65,26 +66,13 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       },
     });
 
-    if (q.type === "MULTIPLE_CHOICE") {
-      const correct = q.options.find((o) => o.isCorrect);
-      const isRight = correct && ans.optionId === correct.id;
-      const points = isRight ? q.points : 0;
-      autoScore += points;
+    const auto = autoGradeAnswer(q, ans);
+    if (auto) {
+      autoScore += auto.points;
       await prisma.answerGrade.upsert({
         where: { answerId: answer.id },
-        create: { answerId: answer.id, points, feedback: isRight ? "Correcto" : "Incorrecto" },
-        update: { points, feedback: isRight ? "Correcto" : "Incorrecto" },
-      });
-    } else if (q.type === "SHORT_ANSWER" && q.correctText) {
-      const normalize = (s: string) =>
-        s.trim().toLowerCase().replace(/[.,;:!?¡¿]+$/g, "").replace(/\s+/g, " ");
-      const isRight = normalize(ans.textAnswer || "") === normalize(q.correctText);
-      const points = isRight ? q.points : 0;
-      autoScore += points;
-      await prisma.answerGrade.upsert({
-        where: { answerId: answer.id },
-        create: { answerId: answer.id, points, feedback: isRight ? "Correcto" : "Incorrecto" },
-        update: { points, feedback: isRight ? "Correcto" : "Incorrecto" },
+        create: { answerId: answer.id, points: auto.points, feedback: auto.feedback },
+        update: { points: auto.points, feedback: auto.feedback },
       });
     } else {
       needsManual = true;

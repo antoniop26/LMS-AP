@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth";
-import { QuestionType } from "@prisma/client";
+import { validateQuestions } from "@/lib/exam-questions";
 import { sumQuestionPoints } from "@/lib/test-points";
 
 export async function GET(req: NextRequest) {
@@ -63,29 +63,19 @@ export async function POST(req: NextRequest) {
   const subjectId = String(body.subjectId || "");
   const groupId = body.groupId || null;
   const published = Boolean(body.published);
-  const questions = Array.isArray(body.questions) ? body.questions : [];
   const opensAt = body.opensAt ? new Date(body.opensAt) : null;
   const closesAt = body.closesAt ? new Date(body.closesAt) : null;
 
   if (!title || !subjectId) {
     return NextResponse.json({ error: "Datos incompletos" }, { status: 400 });
   }
-  if (questions.length === 0) {
-    return NextResponse.json({ error: "Agregue al menos una pregunta" }, { status: 400 });
+  const validation = validateQuestions(body.questions);
+  if (!validation.ok) {
+    return NextResponse.json({ error: validation.error }, { status: 400 });
   }
-  for (const q of questions) {
-    const pts = q?.points ?? 1;
-    if (typeof pts !== "number" || !Number.isFinite(pts) || pts <= 0) {
-      return NextResponse.json(
-        { error: "Cada pregunta debe valer un número de puntos mayor que 0" },
-        { status: 400 }
-      );
-    }
-  }
+  const questions = validation.questions;
   // El puntaje máximo del examen es la suma de los puntos de sus preguntas.
-  const maxScore = sumQuestionPoints(
-    questions.map((q: { points?: number }) => ({ points: q?.points ?? 1 }))
-  );
+  const maxScore = sumQuestionPoints(questions);
   const subject = await prisma.subject.findFirst({
     where: { id: subjectId, schoolId: user.schoolId },
     select: { id: true },
@@ -126,25 +116,18 @@ export async function POST(req: NextRequest) {
       closesAt,
       creatorId: user.id,
       questions: {
-        create: questions.map((q: {
-          prompt: string;
-          type: QuestionType;
-          points?: number;
-          order?: number;
-          correctText?: string;
-          options?: { text: string; isCorrect?: boolean; order?: number }[];
-        }, idx: number) => ({
+        create: questions.map((q, idx) => ({
           prompt: q.prompt,
           type: q.type,
-          points: q.points ?? 1,
-          order: q.order ?? idx,
-          correctText: q.correctText || null,
-          options: q.options
+          points: q.points,
+          order: idx,
+          correctText: q.correctText,
+          options: q.options.length
             ? {
                 create: q.options.map((o, oi) => ({
                   text: o.text,
-                  isCorrect: Boolean(o.isCorrect),
-                  order: o.order ?? oi,
+                  isCorrect: o.isCorrect,
+                  order: oi,
                 })),
               }
             : undefined,

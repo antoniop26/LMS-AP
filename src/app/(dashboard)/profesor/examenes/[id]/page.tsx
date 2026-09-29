@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { formatScore } from "@/lib/test-points";
+import { formatScore, sumQuestionPoints } from "@/lib/test-points";
+import { QuestionEditor, toEditable, toPayload, type EditableQuestion } from "@/components/exams/question-editor";
 
 type GradeDraft = { points: string; feedback: string };
 
@@ -75,6 +76,9 @@ export default function ExamenDetailPage() {
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [editQuestions, setEditQuestions] = useState<EditableQuestion[] | null>(null);
+  const [savingQuestions, setSavingQuestions] = useState(false);
+  const [questionsError, setQuestionsError] = useState("");
 
   const needsManual = useMemo(
     () => testNeedsManualGrading(test?.questions),
@@ -168,6 +172,66 @@ export default function ExamenDetailPage() {
     }
   }
 
+  function startEditQuestions() {
+    setMsg("");
+    setQuestionsError("");
+    setEditQuestions(toEditable(test?.questions || []));
+  }
+
+  async function saveQuestions(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editQuestions) return;
+    setMsg("");
+    setQuestionsError("");
+    if (editQuestions.length === 0) {
+      setQuestionsError("Agregue al menos una pregunta");
+      return;
+    }
+    const answered = Array.isArray(test?.attempts) ? test.attempts.length : 0;
+    let confirmRecalc = false;
+    if (answered > 0) {
+      const ok = window.confirm(
+        `${answered} alumno${answered === 1 ? " ya respondió" : "s ya respondieron"}; se recalcularán sus notas. ¿Desea guardar los cambios?`
+      );
+      if (!ok) return;
+      confirmRecalc = true;
+    }
+    setSavingQuestions(true);
+    try {
+      const send = (confirm: boolean) =>
+        fetch(`/api/examenes/${id}/preguntas`, {
+          method: "PUT",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ questions: toPayload(editQuestions), confirmRecalc: confirm }),
+        });
+      let res = await send(confirmRecalc);
+      let data = await res.json().catch(() => ({}));
+      if (res.status === 409 && data.requiresConfirmation) {
+        const n = data.attemptCount ?? 0;
+        if (!window.confirm(`${n} alumno${n === 1 ? " ya respondió" : "s ya respondieron"}; se recalcularán sus notas. ¿Desea guardar los cambios?`)) {
+          return;
+        }
+        res = await send(true);
+        data = await res.json().catch(() => ({}));
+      }
+      if (!res.ok) {
+        setQuestionsError(data.error || "No se pudieron guardar las preguntas");
+        return;
+      }
+      const savedMsg =
+        `Preguntas guardadas. Total: ${data.test?.maxScore ?? sumQuestionPoints(editQuestions)} puntos` +
+        (data.recalculated ? ` · ${data.recalculated} nota${data.recalculated === 1 ? "" : "s"} recalculada${data.recalculated === 1 ? "" : "s"}` : "");
+      await load();
+      setEditQuestions(null);
+      setMsg(savedMsg);
+    } catch {
+      setQuestionsError("No se pudo conectar con el servidor");
+    } finally {
+      setSavingQuestions(false);
+    }
+  }
+
   function openStudent(studentId: string, status: "ENVIADO" | "NO_ENVIADO") {
     setMsg("");
     setError("");
@@ -218,6 +282,7 @@ export default function ExamenDetailPage() {
   if (!test) return <p className="text-gray-500">Cargando…</p>;
 
   const enviadoCount = roster.filter((r) => r.status === "ENVIADO").length;
+  const answeredCount = Array.isArray(test.attempts) ? test.attempts.length : enviadoCount;
   const noEnviadoCount = roster.length - enviadoCount;
 
   // —— Student detail view ——
@@ -407,9 +472,46 @@ export default function ExamenDetailPage() {
       {msg && <p className="text-sm text-green-700">{msg}</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
 
+      {editQuestions ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>Editar preguntas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={saveQuestions} className="space-y-4">
+              {answeredCount > 0 && (
+                <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" data-testid="recalc-warning">
+                  <p className="font-semibold">
+                    {answeredCount} alumno{answeredCount === 1 ? " ya respondió" : "s ya respondieron"}; se recalcularán sus notas al guardar.
+                  </p>
+                  <ul className="mt-1 list-disc space-y-0.5 pl-5">
+                    <li>Las preguntas automáticas se vuelven a calificar con la nueva respuesta correcta y los nuevos puntos.</li>
+                    <li>Las notas manuales se conservan; si superan los nuevos puntos de la pregunta, se ajustan al máximo.</li>
+                    <li>Si una pregunta automática pasa a ser manual, esa respuesta quedará pendiente de calificar.</li>
+                    <li>Las preguntas eliminadas dejan de contar; las preguntas nuevas cuentan 0 para quienes ya enviaron.</li>
+                  </ul>
+                </div>
+              )}
+              <QuestionEditor questions={editQuestions} onChange={setEditQuestions} />
+              {questionsError && <p className="text-sm text-red-600">{questionsError}</p>}
+              <div className="flex flex-wrap gap-2">
+                <Button type="submit" disabled={savingQuestions || editQuestions.length === 0 || sumQuestionPoints(editQuestions) <= 0}>
+                  {savingQuestions ? "Guardando…" : "Guardar preguntas"}
+                </Button>
+                <Button type="button" variant="ghost" disabled={savingQuestions} onClick={() => { setEditQuestions(null); setQuestionsError(""); }}>
+                  Cancelar
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      ) : (
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between gap-3">
           <CardTitle>Preguntas · Total: {test.maxScore} puntos</CardTitle>
+          <Button size="sm" variant="outline" onClick={startEditQuestions}>
+            Editar preguntas
+          </Button>
         </CardHeader>
         <CardContent className="space-y-3">
           {test.questions?.map((q: any, i: number) => (
@@ -426,6 +528,7 @@ export default function ExamenDetailPage() {
           ))}
         </CardContent>
       </Card>
+      )}
 
       <div className="space-y-3">
         <div className="flex flex-wrap items-baseline justify-between gap-2">

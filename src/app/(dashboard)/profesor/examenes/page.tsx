@@ -12,14 +12,8 @@ import { Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { examWindowStatus } from "@/lib/exam-window";
 import { sumQuestionPoints } from "@/lib/test-points";
+import { QuestionEditor, blankQuestion, toPayload, type EditableQuestion } from "@/components/exams/question-editor";
 
-type Q = {
-  prompt: string;
-  type: "MULTIPLE_CHOICE" | "SHORT_ANSWER" | "LONG_ANSWER";
-  points: number;
-  correctText?: string;
-  options: { text: string; isCorrect: boolean }[];
-};
 
 function toLocalInput(iso: string | null | undefined) {
   if (!iso) return "";
@@ -40,9 +34,7 @@ export default function ProfesorExamenesPage() {
   const [published, setPublished] = useState(true);
   const [opensAt, setOpensAt] = useState("");
   const [closesAt, setClosesAt] = useState("");
-  const [questions, setQuestions] = useState<Q[]>([
-    { prompt: "", type: "MULTIPLE_CHOICE", points: 1, options: [{ text: "", isCorrect: true }, { text: "", isCorrect: false }] },
-  ]);
+  const [questions, setQuestions] = useState<EditableQuestion[]>(() => [blankQuestion()]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editOpensAt, setEditOpensAt] = useState("");
@@ -106,10 +98,6 @@ export default function ProfesorExamenesPage() {
     return <Badge variant="success">Abierta</Badge>;
   }
 
-  function updateQ(i: number, patch: Partial<Q>) {
-    setQuestions((prev) => prev.map((q, idx) => (idx === i ? { ...q, ...patch } : q)));
-  }
-
   async function create(e: React.FormEvent) {
     e.preventDefault();
     setFormError("");
@@ -125,7 +113,7 @@ export default function ProfesorExamenesPage() {
         published,
         opensAt: opensAt ? new Date(opensAt).toISOString() : null,
         closesAt: closesAt ? new Date(closesAt).toISOString() : null,
-        questions,
+        questions: toPayload(questions),
       }),
     });
     if (!res.ok) {
@@ -139,7 +127,7 @@ export default function ProfesorExamenesPage() {
     setDescription("");
     setOpensAt("");
     setClosesAt("");
-    setQuestions([{ prompt: "", type: "MULTIPLE_CHOICE", points: 1, options: [{ text: "", isCorrect: true }, { text: "", isCorrect: false }] }]);
+    setQuestions([blankQuestion()]);
     setLoading(false);
     load();
   }
@@ -231,73 +219,7 @@ export default function ProfesorExamenesPage() {
                 </p>
               </div>
 
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-medium text-gray-900">Preguntas</h3>
-                    <p className="text-sm font-semibold text-blue-700" data-testid="exam-total-points">
-                      Total: {totalPoints} {totalPoints === 1 ? "punto" : "puntos"}
-                    </p>
-                  </div>
-                  <Button type="button" variant="outline" size="sm" onClick={() => setQuestions((q) => [...q, { prompt: "", type: "SHORT_ANSWER", points: 1, options: [] }])}>
-                    Añadir pregunta
-                  </Button>
-                </div>
-                {questions.map((q, i) => (
-                  <Card key={i} className="border-dashed">
-                    <CardContent className="space-y-3 pt-4">
-                      <div className="flex gap-2">
-                        <Select value={q.type} onValueChange={(v: any) => updateQ(i, { type: v, options: v === "MULTIPLE_CHOICE" ? [{ text: "", isCorrect: true }, { text: "", isCorrect: false }] : [] })}>
-                          <SelectTrigger className="w-48"><SelectValue /></SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="MULTIPLE_CHOICE">Opción múltiple</SelectItem>
-                            <SelectItem value="SHORT_ANSWER">Respuesta corta</SelectItem>
-                            <SelectItem value="LONG_ANSWER">Respuesta larga</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Input type="number" className="w-24" value={q.points} onChange={(e) => updateQ(i, { points: e.target.value === "" ? 0 : Number(e.target.value) })} min={0.5} step={0.5} required aria-label="Puntos" />
-                        <Button type="button" variant="ghost" size="icon" onClick={() => setQuestions((qs) => qs.filter((_, idx) => idx !== i))}>
-                          <Trash2 className="h-4 w-4 text-red-500" />
-                        </Button>
-                      </div>
-                      <Textarea placeholder="Enunciado de la pregunta" value={q.prompt} onChange={(e) => updateQ(i, { prompt: e.target.value })} required />
-                      {q.type === "MULTIPLE_CHOICE" && (
-                        <div className="space-y-2">
-                          {q.options.map((o, oi) => (
-                            <div key={oi} className="flex items-center gap-2">
-                              <input
-                                type="radio"
-                                name={`correct-${i}`}
-                                checked={o.isCorrect}
-                                onChange={() => updateQ(i, { options: q.options.map((opt, idx) => ({ ...opt, isCorrect: idx === oi })) })}
-                              />
-                              <Input
-                                placeholder={`Opción ${oi + 1}`}
-                                value={o.text}
-                                onChange={(e) => {
-                                  const options = [...q.options];
-                                  options[oi] = { ...options[oi], text: e.target.value };
-                                  updateQ(i, { options });
-                                }}
-                                required
-                              />
-                            </div>
-                          ))}
-                          <Button type="button" variant="outline" size="sm" onClick={() => updateQ(i, { options: [...q.options, { text: "", isCorrect: false }] })}>
-                            + Opción
-                          </Button>
-                        </div>
-                      )}
-                      {q.type === "SHORT_ANSWER" && (
-                        <Input placeholder="Respuesta correcta (auto-califica)" value={q.correctText || ""} onChange={(e) => updateQ(i, { correctText: e.target.value })} />
-                      )}
-                      {q.type === "LONG_ANSWER" && (
-                        <p className="text-xs text-gray-500">Se califica manualmente por el profesor.</p>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+              <QuestionEditor questions={questions} onChange={setQuestions} />
 
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={published} onChange={(e) => setPublished(e.target.checked)} />
@@ -307,7 +229,7 @@ export default function ProfesorExamenesPage() {
                 Puntaje máximo del examen: <span className="font-semibold">{totalPoints} puntos</span> (suma de los puntos de cada pregunta).
               </p>
               {formError && <p className="text-sm text-red-600">{formError}</p>}
-              <Button type="submit" disabled={loading || !subjectId || !title || totalPoints <= 0}>Crear examen</Button>
+              <Button type="submit" disabled={loading || !subjectId || !title || questions.length === 0 || totalPoints <= 0}>Crear examen</Button>
             </form>
           </CardContent>
         </Card>
